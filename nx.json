@@ -1,0 +1,47 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/.eslintrc.json",
+      "!{projectRoot}/eslint.config.mjs",
+      "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
+      "!{projectRoot}/tsconfig.spec.json"
+    ],
+    "sharedGlobals": []
+  },
+  "targetDefaults": {
+    "@nx/js:tsc": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
+    }
+  },
+  "plugins": [
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "lint"
+      }
+    },
+    {
+      "plugin": "@nx/vitest",
+      "options": {
+        "testTargetName": "test",
+        "ciTargetName": "test-ci"
+      }
+    }
+  ],
+  "release": {
+    "projects": ["aws-sdk-vitest-mock"],
+    "version": {
+      "conventionalCommits": true
+    },
+    "changelog": {
+      "workspaceChangelog": {
+        "createRelease": "github"
+      }
+    }
+  }
+}

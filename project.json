@@ -1,0 +1,21 @@
+{
+  "name": "aws-sdk-vitest-mock",
+  "$schema": "node_modules/nx/schemas/project-schema.json",
+  "includedScripts": [],
+  "sourceRoot": "src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist",
+        "configFile": "vite.config.mts"
+      }
+    },
+    "lint": {
+      "command": "eslint ./src ./package.json"
+    }
+  }
+}

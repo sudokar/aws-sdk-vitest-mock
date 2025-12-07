@@ -1,0 +1,20 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - run: bun install
+      - run: bun run nx lint aws-sdk-vitest-mock
+      - run: bun run nx test aws-sdk-vitest-mock
+      - run: bun run nx build aws-sdk-vitest-mock
