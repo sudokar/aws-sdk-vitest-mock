@@ -1,7 +1,7 @@
 import { S3Client, GetObjectCommandOutput } from '@aws-sdk/client-s3';
 import type { Handler, MiddlewareStack } from '@smithy/types';
 import { expect, test, beforeEach, afterEach, describe } from 'vitest';
-import { mockClient, AwsClientStub } from './mock-client';
+import { mockClient, AwsClientStub } from './mock-client.js';
 
 // A fake command that mimics an AWS SDK command but doesn't inherit from the same base
 // This simulates a command from a different version of @aws-sdk/client-s3

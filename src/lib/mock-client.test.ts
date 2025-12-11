@@ -1,7 +1,7 @@
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { S3Client, GetObjectCommand, PutObjectCommand, GetObjectCommandInput, GetObjectCommandOutput } from '@aws-sdk/client-s3';
 import { expect, test, beforeEach, afterEach, describe } from 'vitest';
-import { mockClient, mockClientInstance, AwsClientStub } from './mock-client';
+import { mockClient, mockClientInstance, AwsClientStub } from './mock-client.js';
 
 describe('mockClient', () => {
   let s3Mock: AwsClientStub<S3Client>;
