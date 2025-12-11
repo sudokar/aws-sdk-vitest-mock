@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Validate commit message format (Conventional Commits)
 commit_msg_file=$1
 commit_msg=$(cat "$commit_msg_file")

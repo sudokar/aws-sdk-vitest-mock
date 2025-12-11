@@ -1,22 +1,23 @@
-# 🧪 AWS SDK Vitest Mock
+<p align="center">
+  <img src="logo.png" alt="aws-sdk-vitest-mock logo" width="180" />
+</p>
 
-> A powerful, type-safe mocking library for AWS SDK v3 with Vitest
+<h1 align="center">AWS SDK Vitest Mock</h1>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
-[![Vitest](https://img.shields.io/badge/Vitest-4.0-green.svg)](https://vitest.dev/)
+<p align="center">
+  A powerful, type-safe mocking library for AWS SDK v3 with Vitest
+</p>
 
 ---
 
 ## ✨ Features
 
 - 🎯 **Type-Safe Mocking** - Full TypeScript support with strict type checking
+- 📦 **Zero Dependencies** - No extra dependencies
 - 🔄 **Dual Module Support** - Works with both ESM and CommonJS
 - 🎭 **Flexible Mocking** - Support for partial matching, strict matching, and custom handlers
-- 🔁 **Once Handlers** - `resolvesOnce`, `rejectsOnce`, and `callsFakeOnce` for sequential responses
 - 🧩 **Chainable API** - Fluent interface for configuring multiple mock behaviors
 - 🔍 **Custom Matchers** - Vitest matchers for asserting AWS SDK command calls
-- 📦 **Zero Dependencies** - Only peer dependency on Vitest
 
 ## 📦 Installation
 
@@ -214,16 +215,6 @@ Mocks an existing AWS SDK client instance.
 - `callsFake(handler)` - Custom response handler
 - `callsFakeOnce(handler)` - Custom response handler (once)
 
-## 🏗️ Architecture
-
-This library uses:
-
-- **WeakMap** for efficient command-to-mock lookups
-- **Structural typing** for compatibility across AWS SDK versions
-- **Vitest spies** for tracking calls and mocking behavior
-- **TypeScript generics** for full type inference
-- **Git hooks** (Husky + lint-staged) for automated code quality checks
-
 ## 🤝 Contributing
 
 We welcome contributions! 🎉 Please read our [Contributing Guidelines](./CONTRIBUTING.md) for details on:
@@ -261,7 +252,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the complete guide.
 
 ## 📝 License
 
-MIT © [sudokar](https://github.com/sudokar)
+MIT
 
 ## 🔗 Links
 
@@ -271,4 +262,4 @@ MIT © [sudokar](https://github.com/sudokar)
 
 ---
 
-**Made with ❤️ by the community**
+**Made with ❤️ by [sudokar](https://github.com/sudokar)**
