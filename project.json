@@ -16,6 +16,14 @@
     },
     "lint": {
       "command": "eslint ./src ./package.json"
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "passWithNoTests": false,
+        "reportsDirectory": "./coverage/aws-sdk-vitest-mock"
+      }
     }
   }
 }

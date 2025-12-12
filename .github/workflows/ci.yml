@@ -15,6 +15,6 @@ jobs:
         with:
           bun-version: latest
       - run: bun install
-      - run: bun run nx lint aws-sdk-vitest-mock
-      - run: bun run nx test aws-sdk-vitest-mock
-      - run: bun run nx build aws-sdk-vitest-mock
+      - run: bun run nx lint
+      - run: bun run nx test
+      - run: bun run nx build

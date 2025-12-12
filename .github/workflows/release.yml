@@ -22,7 +22,7 @@ jobs:
       - run: bun install
       - run: git config --global user.email "github-actions[bot]@users.noreply.github.com"
       - run: git config --global user.name "github-actions[bot]"
-      - run: bun run nx release
+      - run: bun run nx release --dry-run
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
