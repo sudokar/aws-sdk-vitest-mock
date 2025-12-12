@@ -19,29 +19,16 @@
     }
   },
   "plugins": [
-    {
-      "plugin": "@nx/eslint/plugin",
-      "options": {
-        "targetName": "lint"
-      }
-    },
+    { "plugin": "@nx/eslint/plugin", "options": { "targetName": "lint" } },
     {
       "plugin": "@nx/vitest",
-      "options": {
-        "testTargetName": "test",
-        "ciTargetName": "test-ci"
-      }
+      "options": { "testTargetName": "test", "ciTargetName": "test-ci" }
     }
   ],
   "release": {
     "projects": ["aws-sdk-vitest-mock"],
-    "version": {
-      "conventionalCommits": true
-    },
-    "changelog": {
-      "workspaceChangelog": {
-        "createRelease": "github"
-      }
-    }
-  }
+    "version": { "conventionalCommits": true },
+    "changelog": { "workspaceChangelog": { "createRelease": "github" } }
+  },
+  "nxCloudId": "693c08da67bb76af270de958"
 }
