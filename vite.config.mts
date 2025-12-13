@@ -1,4 +1,4 @@
-/// <reference types='vitest' />
+// <reference types='vitest' />
 import { defineConfig, LibraryFormats } from "vite";
 import { nxViteTsPaths } from "@nx/vite/plugins/nx-tsconfig-paths.plugin";
 import { nxCopyAssetsPlugin } from "@nx/vite/plugins/nx-copy-assets.plugin";
@@ -10,7 +10,7 @@ export default defineConfig(() => ({
   cacheDir: "./node_modules/.vite/aws-sdk-vitest-mock",
   plugins: [
     nxViteTsPaths(),
-    nxCopyAssetsPlugin(["*.md"]),
+    nxCopyAssetsPlugin(["README.md"]),
     dts({
       entryRoot: "src",
       tsconfigPath: "./tsconfig.lib.json",

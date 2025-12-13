@@ -19,10 +19,32 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - run: bun install
+      - run: bun install --frozen-lockfile
       - run: git config --global user.email "github-actions[bot]@users.noreply.github.com"
       - run: git config --global user.name "github-actions[bot]"
-      - run: bun run nx release --dry-run
+      - run: bun run nx build
+      - name: Evaluate release
+        id: release_check
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -eo pipefail
+          bun run nx release --skip-publish --dry-run > release-output.log 2>&1
+          cat release-output.log
+          if grep -q "No files would be changed as a result of running versioning" release-output.log; then
+            echo "release_required=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_required=true" >> "$GITHUB_OUTPUT"
+          fi
+      - run: bun run nx release --skip-publish
+        if: steps.release_check.outputs.release_required == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Publish to npm
+        if: steps.release_check.outputs.release_required == 'true'
+        run: |
+          echo "registry=https://registry.npmjs.org/" > ~/.npmrc
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
+          npm publish ./dist
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

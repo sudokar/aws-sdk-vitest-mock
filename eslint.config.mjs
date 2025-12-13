@@ -6,6 +6,9 @@ import sonarjs from "eslint-plugin-sonarjs";
 import tseslint from "typescript-eslint";
 import vitest from "@vitest/eslint-plugin";
 
+const unicornRecommendedRules =
+  unicorn.configs["recommended"]?.rules ?? unicorn.configs.recommended.rules;
+
 export default tseslint.config(
   ...nx.configs["flat/base"],
   ...nx.configs["flat/typescript"],
@@ -37,7 +40,7 @@ export default tseslint.config(
       },
     },
     rules: {
-      // ...unicorn.configs.recommended.rules,
+      ...unicornRecommendedRules,
       ...security.configs.recommended.rules,
       ...sonarjs.configs.recommended.rules,
       "import/order": [
@@ -79,7 +82,7 @@ export default tseslint.config(
       },
     },
     rules: {
-      // ...unicorn.configs.recommended.rules,
+      ...unicornRecommendedRules,
       ...vitest.configs.recommended.rules,
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/explicit-function-return-type": "off",
