@@ -75,6 +75,65 @@ describe("mockClient", () => {
     expect(result.ETag).toBe("abc123");
   });
 
+  test("should support nested metadata request matching", async () => {
+    s3Mock
+      .on(PutObjectCommand, {
+        Bucket: "nested-bucket",
+        Metadata: { env: "dev" },
+      })
+      .resolves({ ETag: "nested" });
+    s3Mock.on(PutObjectCommand).resolves({ ETag: "fallback" });
+
+    const client = new S3Client({});
+    const matched = await client.send(
+      new PutObjectCommand({
+        Bucket: "nested-bucket",
+        Key: "file.txt",
+        Body: "content",
+        Metadata: { env: "dev", version: "1" },
+      }),
+    );
+
+    const fallback = await client.send(
+      new PutObjectCommand({
+        Bucket: "nested-bucket",
+        Key: "file.txt",
+        Body: "content",
+      }),
+    );
+
+    expect(matched.ETag).toBe("nested");
+    expect(fallback.ETag).toBe("fallback");
+  });
+
+  test("should reject with string error", async () => {
+    s3Mock.on(GetObjectCommand).rejects("String failure");
+
+    const client = new S3Client({});
+    await expect(
+      client.send(new GetObjectCommand({ Bucket: "test", Key: "string.txt" })),
+    ).rejects.toThrow("String failure");
+  });
+
+  test("reset should clear mocks and calls", async () => {
+    s3Mock.on(GetObjectCommand).resolves({
+      Body: "before-reset" as unknown as GetObjectCommandOutput["Body"],
+    });
+
+    const client = new S3Client({});
+    await client.send(
+      new GetObjectCommand({ Bucket: "test", Key: "reset.txt" }),
+    );
+    expect(s3Mock.calls()).toHaveLength(1);
+
+    s3Mock.reset();
+
+    expect(s3Mock.calls()).toHaveLength(0);
+    await expect(
+      client.send(new GetObjectCommand({ Bucket: "test", Key: "reset.txt" })),
+    ).rejects.toThrow("No mock configured for command: GetObjectCommand");
+  });
+
   test("should reject with error", async () => {
     s3Mock.on(GetObjectCommand).rejects(new Error("Not found"));
 
@@ -148,6 +207,25 @@ describe("resolvesOnce / rejectsOnce", () => {
     expect(result.Body).toBe("success");
   });
 
+  test("should support rejectsOnce with string error", async () => {
+    s3Mock
+      .on(GetObjectCommand)
+      .rejectsOnce("Temporary string failure")
+      .resolves({
+        Body: "string-recovery" as unknown as GetObjectCommandOutput["Body"],
+      });
+
+    const client = new S3Client({});
+
+    await expect(
+      client.send(new GetObjectCommand({ Bucket: "test", Key: "test.txt" })),
+    ).rejects.toThrow("Temporary string failure");
+    const result = await client.send(
+      new GetObjectCommand({ Bucket: "test", Key: "test.txt" }),
+    );
+    expect(result.Body).toBe("string-recovery");
+  });
+
   test("should support chainable API", () => {
     const stub = s3Mock.on(GetObjectCommand);
 
@@ -160,6 +238,36 @@ describe("resolvesOnce / rejectsOnce", () => {
 
     // Should return the same stub for chaining
     expect(returned).toBe(stub);
+  });
+
+  test("should prioritize once handlers added after permanent handler", async () => {
+    const stub = s3Mock.on(GetObjectCommand);
+
+    stub
+      .resolves({
+        Body: "permanent" as unknown as GetObjectCommandOutput["Body"],
+      })
+      .resolvesOnce({
+        Body: "once-1" as unknown as GetObjectCommandOutput["Body"],
+      })
+      .resolvesOnce({
+        Body: "once-2" as unknown as GetObjectCommandOutput["Body"],
+      });
+
+    const client = new S3Client({});
+    const first = await client.send(
+      new GetObjectCommand({ Bucket: "test", Key: "test.txt" }),
+    );
+    const second = await client.send(
+      new GetObjectCommand({ Bucket: "test", Key: "test.txt" }),
+    );
+    const third = await client.send(
+      new GetObjectCommand({ Bucket: "test", Key: "test.txt" }),
+    );
+
+    expect(first.Body).toBe("once-1");
+    expect(second.Body).toBe("once-2");
+    expect(third.Body).toBe("permanent");
   });
 
   test("should support callsFakeOnce", async () => {
@@ -259,6 +367,31 @@ describe("mockClientInstance", () => {
 
     mock.restore();
   });
+
+  test("reset should clear instance mocks", async () => {
+    const clientInstance = new S3Client({});
+    const mock = mockClientInstance(clientInstance);
+
+    mock.on(GetObjectCommand).resolves({
+      Body: "before-reset" as unknown as GetObjectCommandOutput["Body"],
+    });
+
+    await clientInstance.send(
+      new GetObjectCommand({ Bucket: "test", Key: "reset.txt" }),
+    );
+    expect(mock.calls()).toHaveLength(1);
+
+    mock.reset();
+
+    expect(mock.calls()).toHaveLength(0);
+    await expect(
+      clientInstance.send(
+        new GetObjectCommand({ Bucket: "test", Key: "reset.txt" }),
+      ),
+    ).rejects.toThrow("No mock configured for command: GetObjectCommand");
+
+    mock.restore();
+  });
 });
 
 describe("strict matching", () => {
@@ -294,6 +427,79 @@ describe("strict matching", () => {
     const client = new S3Client({ region: "us-east-1" });
     await expect(
       client.send(new GetObjectCommand({ Bucket: "b", Key: "k" })),
+    ).rejects.toThrow("No mock configured for command: GetObjectCommand");
+  });
+
+  test("should match nested objects with strict: true", async () => {
+    s3Mock
+      .on(
+        PutObjectCommand,
+        { Bucket: "nested", Metadata: { stage: "dev", flags: { copy: true } } },
+        { strict: true },
+      )
+      .resolves({ ETag: "strict-nested" });
+
+    const client = new S3Client({ region: "us-east-1" });
+    const result = await client.send(
+      new PutObjectCommand({
+        Bucket: "nested",
+        Metadata: { stage: "dev", flags: { copy: true } },
+      }),
+    );
+
+    expect(result.ETag).toBe("strict-nested");
+  });
+
+  test("should reject when nested objects differ with strict: true", async () => {
+    s3Mock
+      .on(
+        PutObjectCommand,
+        { Bucket: "nested", Metadata: { stage: "dev", flags: { copy: true } } },
+        { strict: true },
+      )
+      .resolves({ ETag: "strict-nested" });
+
+    const client = new S3Client({ region: "us-east-1" });
+    await expect(
+      client.send(
+        new PutObjectCommand({
+          Bucket: "nested",
+          Metadata: {
+            stage: "dev",
+            flags: { copy: true, retry: false },
+          },
+        }),
+      ),
+    ).rejects.toThrow("No mock configured for command: PutObjectCommand");
+  });
+
+  test("should match identical reference objects with strict: true", async () => {
+    const request = { Bucket: "ref-bucket" };
+
+    s3Mock.on(GetObjectCommand, request, { strict: true }).resolves({
+      Body: "ref-match" as unknown as GetObjectCommandOutput["Body"],
+    });
+
+    const client = new S3Client({ region: "us-east-1" });
+    const result = await client.send(new GetObjectCommand(request));
+
+    expect(result.Body).toBe("ref-match");
+  });
+
+  test("should reject when strict matcher expects missing property", async () => {
+    s3Mock
+      .on(
+        GetObjectCommand,
+        { Bucket: "strict", Expected: "present" },
+        { strict: true },
+      )
+      .resolves({
+        Body: "should-not-match" as unknown as GetObjectCommandOutput["Body"],
+      });
+
+    const client = new S3Client({ region: "us-east-1" });
+    await expect(
+      client.send(new GetObjectCommand({ Bucket: "strict" })),
     ).rejects.toThrow("No mock configured for command: GetObjectCommand");
   });
 });
