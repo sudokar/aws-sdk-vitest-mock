@@ -168,6 +168,103 @@ s3Mock.on(ListObjectsV2Command).resolvesPaginated(objects, {
 });
 ```
 
+### DynamoDB with Marshal/Unmarshal
+
+Mock DynamoDB operations using AWS SDK's marshal/unmarshal utilities for type-safe data handling:
+
+```typescript
+import { describe, test, expect, beforeEach, afterEach } from "vitest";
+import { mockClient } from "aws-sdk-vitest-mock";
+import {
+  DynamoDBClient,
+  GetItemCommand,
+  PutItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+
+// Your application service
+class UserService {
+  constructor(private dynamoClient: DynamoDBClient) {}
+
+  async getUser(userId: string) {
+    const result = await this.dynamoClient.send(
+      new GetItemCommand({
+        TableName: "Users",
+        Key: marshall({ id: userId }),
+      }),
+    );
+
+    return result.Item ? unmarshall(result.Item) : null;
+  }
+
+  async createUser(user: { id: string; name: string; email: string }) {
+    await this.dynamoClient.send(
+      new PutItemCommand({
+        TableName: "Users",
+        Item: marshall(user),
+      }),
+    );
+  }
+}
+
+describe("UserService with DynamoDB", () => {
+  let dynamoMock: ReturnType<typeof mockClient>;
+  let userService: UserService;
+
+  beforeEach(() => {
+    dynamoMock = mockClient(DynamoDBClient);
+    const dynamoClient = new DynamoDBClient({ region: "us-east-1" });
+    userService = new UserService(dynamoClient);
+  });
+
+  afterEach(() => {
+    dynamoMock.restore();
+  });
+
+  test("should get user by id", async () => {
+    const mockUser = { id: "123", name: "John Doe", email: "john@example.com" };
+
+    // Mock DynamoDB response with marshalled data
+    dynamoMock.on(GetItemCommand).resolves({
+      Item: marshall(mockUser),
+    });
+
+    const result = await userService.getUser("123");
+
+    expect(result).toEqual(mockUser);
+    expect(dynamoMock).toHaveReceivedCommandWith(GetItemCommand, {
+      TableName: "Users",
+      Key: marshall({ id: "123" }),
+    });
+  });
+
+  test("should create new user", async () => {
+    const newUser = {
+      id: "456",
+      name: "Jane Smith",
+      email: "jane@example.com",
+    };
+
+    dynamoMock.on(PutItemCommand).resolves({});
+
+    await userService.createUser(newUser);
+
+    expect(dynamoMock).toHaveReceivedCommandWith(PutItemCommand, {
+      TableName: "Users",
+      Item: marshall(newUser),
+    });
+  });
+
+  test("should return null for non-existent user", async () => {
+    dynamoMock.on(GetItemCommand).resolves({}); // No Item in response
+
+    const result = await userService.getUser("999");
+
+    expect(result).toBeNull();
+  });
+});
+```
+
 ### Stream Mocking (S3 Helper)
 
 Mock S3 operations that return streams with automatic environment detection:
