@@ -37,7 +37,9 @@ describe("debug-logger", () => {
     enableDebug(logger);
 
     logger.log("test message");
-    expect(consoleSpy).toHaveBeenCalledWith("[AWS Mock Debug] test message");
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[aws-sdk-vitest-mock](Debug) test message",
+    );
   });
 
   test("should log with data when provided", () => {
@@ -48,7 +50,7 @@ describe("debug-logger", () => {
 
     logger.log("test message", data);
     expect(consoleSpy).toHaveBeenCalledWith(
-      "[AWS Mock Debug] test message",
+      "[aws-sdk-vitest-mock](Debug) test message",
       data,
     );
   });

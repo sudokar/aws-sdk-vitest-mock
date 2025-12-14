@@ -1143,14 +1143,14 @@ describe("Debug Mode", () => {
     );
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      "[AWS Mock Debug] Received command: GetObjectCommand",
+      "[aws-sdk-vitest-mock](Debug) Received command: GetObjectCommand",
       { Bucket: "test-bucket", Key: "test-key" },
     );
     expect(consoleSpy).toHaveBeenCalledWith(
-      "[AWS Mock Debug] Found 1 mock(s) for GetObjectCommand",
+      "[aws-sdk-vitest-mock](Debug) Found 1 mock(s) for GetObjectCommand",
     );
     expect(consoleSpy).toHaveBeenCalledWith(
-      "[AWS Mock Debug] Using mock at index 0 for GetObjectCommand",
+      "[aws-sdk-vitest-mock](Debug) Using mock at index 0 for GetObjectCommand",
     );
   });
 
@@ -1167,11 +1167,11 @@ describe("Debug Mode", () => {
     ).rejects.toThrow();
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      "[AWS Mock Debug] Received command: GetObjectCommand",
+      "[aws-sdk-vitest-mock](Debug) Received command: GetObjectCommand",
       { Bucket: "test-bucket", Key: "test-key" },
     );
     expect(consoleSpy).toHaveBeenCalledWith(
-      "[AWS Mock Debug] No mocks configured for GetObjectCommand",
+      "[aws-sdk-vitest-mock](Debug) No mocks configured for GetObjectCommand",
     );
   });
 
@@ -1191,10 +1191,10 @@ describe("Debug Mode", () => {
     ).rejects.toThrow();
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      "[AWS Mock Debug] Found 1 mock(s) for GetObjectCommand",
+      "[aws-sdk-vitest-mock](Debug) Found 1 mock(s) for GetObjectCommand",
     );
     expect(consoleSpy).toHaveBeenCalledWith(
-      "[AWS Mock Debug] No matching mock found for GetObjectCommand",
+      "[aws-sdk-vitest-mock](Debug) No matching mock found for GetObjectCommand",
       { Bucket: "test-bucket", Key: "test-key" },
     );
   });
@@ -1211,7 +1211,7 @@ describe("Debug Mode", () => {
     );
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      "[AWS Mock Debug] Removed one-time mock for GetObjectCommand",
+      "[aws-sdk-vitest-mock](Debug) Removed one-time mock for GetObjectCommand",
     );
   });
 

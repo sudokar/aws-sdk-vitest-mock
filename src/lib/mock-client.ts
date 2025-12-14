@@ -518,8 +518,9 @@ function createCommandStub<
           currentIndex = 0;
         }
 
-        // eslint-disable-next-line security/detect-object-injection, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- Array access with calculated index for pagination response retrieval
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Array access with calculated index for pagination response retrieval
         const response =
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, security/detect-object-injection
           responses[currentIndex] || responses.at(-1) || responses[0];
         if (!response) {
           throw new Error("No paginated responses available");

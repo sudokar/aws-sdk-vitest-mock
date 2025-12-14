@@ -9,9 +9,9 @@ export function createDebugLogger(): DebugLogger {
     log(this: DebugLogger, message: string, data?: unknown) {
       if (this.enabled) {
         if (data === undefined) {
-          console.log(`[AWS Mock Debug] ${message}`);
+          console.log(`[aws-sdk-vitest-mock](Debug) ${message}`);
         } else {
-          console.log(`[AWS Mock Debug] ${message}`, data);
+          console.log(`[aws-sdk-vitest-mock](Debug) ${message}`, data);
         }
       }
     },
