@@ -962,3 +962,141 @@ describe("Strict Command Verification", () => {
     ]);
   });
 });
+
+describe("Paginator Support", () => {
+  let dynamoMock: ReturnType<typeof mockClient>;
+  let s3Mock: ReturnType<typeof mockClient>;
+  let dynamoClient: DynamoDBClient;
+  let s3Client: S3Client;
+
+  beforeEach(() => {
+    dynamoMock = mockClient(DynamoDBClient);
+    s3Mock = mockClient(S3Client);
+    dynamoClient = new DynamoDBClient({});
+    s3Client = new S3Client({});
+  });
+
+  afterEach(() => {
+    dynamoMock.restore();
+    s3Mock.restore();
+  });
+
+  test("should simulate DynamoDB scan pagination", async () => {
+    const items = Array.from({ length: 25 }, (_, index) => ({
+      id: { S: `item-${index + 1}` },
+    }));
+
+    dynamoMock.on(GetItemCommand).resolvesPaginated(items, {
+      pageSize: 10,
+      itemsKey: "Items",
+    });
+
+    // First page
+    const result1 = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: "test-table",
+      }),
+    );
+
+    expect(result1.Items).toHaveLength(10);
+    expect((result1.Items as Array<{ id: { S: string } }>)[0]).toEqual({
+      id: { S: "item-1" },
+    });
+    expect(result1.NextToken).toBe("token-10");
+
+    // Second page
+    const result2 = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: "test-table",
+        NextToken: "token-10",
+      }),
+    );
+
+    expect(result2.Items).toHaveLength(10);
+    expect((result2.Items as Array<{ id: { S: string } }>)[0]).toEqual({
+      id: { S: "item-11" },
+    });
+    expect(result2.NextToken).toBe("token-20");
+
+    // Third page
+    const result3 = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: "test-table",
+        NextToken: "token-20",
+      }),
+    );
+
+    expect(result3.Items).toHaveLength(5);
+    expect((result3.Items as Array<{ id: { S: string } }>)[0]).toEqual({
+      id: { S: "item-21" },
+    });
+    expect(result3.NextToken).toBeUndefined();
+  });
+
+  test("should simulate S3 list objects pagination", async () => {
+    const objects = Array.from({ length: 15 }, (_, index) => ({
+      Key: `file-${index + 1}.txt`,
+    }));
+
+    s3Mock.on(GetObjectCommand).resolvesPaginated(objects, {
+      pageSize: 10,
+      tokenKey: "ContinuationToken",
+      itemsKey: "Contents",
+    });
+
+    // First page
+    const result1 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+      }),
+    );
+
+    expect(result1.Contents).toHaveLength(10);
+    expect((result1.Contents as Array<{ Key: string }>)[0]).toEqual({
+      Key: "file-1.txt",
+    });
+    expect(result1.ContinuationToken).toBe("token-10");
+
+    // Second page
+    const result2 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        ContinuationToken: "token-10",
+      }),
+    );
+
+    expect(result2.Contents).toHaveLength(5);
+    expect((result2.Contents as Array<{ Key: string }>)[0]).toEqual({
+      Key: "file-11.txt",
+    });
+    expect(result2.ContinuationToken).toBeUndefined();
+  });
+
+  test("should handle empty paginated results", async () => {
+    dynamoMock.on(GetItemCommand).resolvesPaginated([]);
+
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: "test-table",
+      }),
+    );
+
+    expect(result.Items).toEqual([]);
+    expect(result.NextToken).toBeUndefined();
+  });
+
+  test("should handle single page results", async () => {
+    const items = [{ id: { S: "item-1" } }, { id: { S: "item-2" } }];
+
+    dynamoMock.on(GetItemCommand).resolvesPaginated(items, { pageSize: 10 });
+
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: "test-table",
+      }),
+    );
+
+    expect(result.Items).toEqual(items);
+    expect(result.NextToken).toBeUndefined();
+  });
+});

@@ -10,6 +10,10 @@ import {
   createThrottlingError,
   createInternalServerError,
 } from "./utils/aws-errors.js";
+import {
+  createPaginatedResponses,
+  type PaginatorOptions,
+} from "./utils/paginator-helpers.js";
 import { createStream, type StreamInput } from "./utils/stream-helpers.js";
 
 // Define structural types to avoid strict dependency on specific @smithy/types versions
@@ -220,6 +224,11 @@ export interface AwsCommandStub<
     TOutput,
     TClient
   >;
+  /** Set paginated responses for AWS pagination */
+  resolvesPaginated: <T = unknown>(
+    items: T[],
+    options?: PaginatorOptions,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
 }
 
 type MocksContainer = {
@@ -437,6 +446,47 @@ function createCommandStub<
     },
     rejectsWithInternalServerError(): AwsCommandStub<TInput, TOutput, TClient> {
       addEntry(() => Promise.reject(createInternalServerError()), false);
+      return stub;
+    },
+    resolvesPaginated<T = unknown>(
+      items: T[],
+      options: PaginatorOptions = {},
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      const responses = createPaginatedResponses(items, options);
+      let currentIndex = 0;
+
+      addEntry((input) => {
+        const tokenKey = options.tokenKey || "NextToken";
+        const inputRecord = input as Record<string, unknown>;
+        // eslint-disable-next-line security/detect-object-injection
+        const inputToken = inputRecord[tokenKey] as string | undefined;
+
+        if (inputToken) {
+          // Extract index from token
+          const tokenRegex = /token-(\d+)/;
+          const tokenMatch = tokenRegex.exec(inputToken);
+          if (tokenMatch && tokenMatch[1]) {
+            const tokenValue = tokenMatch[1];
+            currentIndex = Math.floor(
+              Number.parseInt(tokenValue, 10) / (options.pageSize || 10),
+            );
+          }
+        } else {
+          currentIndex = 0;
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const response =
+          // eslint-disable-next-line
+          responses[currentIndex] || responses.at(-1) || responses[0];
+        if (!response) {
+          throw new Error("No paginated responses available");
+        }
+        currentIndex = Math.min(currentIndex + 1, responses.length - 1);
+
+        return Promise.resolve(response as TOutput);
+      }, false);
+
       return stub;
     },
   };

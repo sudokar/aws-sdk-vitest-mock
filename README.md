@@ -99,6 +99,38 @@ s3Mock
 // All other calls return 'subsequent calls'
 ```
 
+### Paginator Support
+
+Mock AWS SDK v3 pagination with automatic token handling:
+
+```typescript
+// Mock DynamoDB scan with pagination
+const items = Array.from({ length: 25 }, (_, i) => ({
+  id: { S: `item-${i + 1}` },
+}));
+
+dynamoMock.on(ScanCommand).resolvesPaginated(items, {
+  pageSize: 10,
+  itemsKey: "Items",
+  tokenKey: "NextToken",
+});
+
+// First call returns items 1-10 with NextToken
+// Second call with NextToken returns items 11-20
+// Third call returns items 21-25 without NextToken
+
+// Mock S3 list objects with pagination
+const objects = Array.from({ length: 15 }, (_, i) => ({
+  Key: `file-${i + 1}.txt`,
+}));
+
+s3Mock.on(ListObjectsV2Command).resolvesPaginated(objects, {
+  pageSize: 10,
+  itemsKey: "Contents",
+  tokenKey: "ContinuationToken",
+});
+```
+
 ### Stream Mocking (S3 Helper)
 
 Mock S3 operations that return streams with automatic environment detection:
@@ -270,6 +302,7 @@ Mocks an existing AWS SDK client instance.
 - `resolvesStreamOnce(data)` - Return stream response once (S3 helper)
 - `resolvesWithDelay(output, delayMs)` - Return response with delay
 - `rejectsWithDelay(error, delayMs)` - Return error with delay
+- `resolvesPaginated(items, options?)` - Return paginated responses with automatic token handling
 - `rejectsWithNoSuchKey(key?)` - Reject with S3 NoSuchKey error
 - `rejectsWithNoSuchBucket(bucket?)` - Reject with S3 NoSuchBucket error
 - `rejectsWithAccessDenied(resource?)` - Reject with AccessDenied error
