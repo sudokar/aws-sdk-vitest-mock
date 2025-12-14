@@ -1,5 +1,5 @@
 import { SmithyResolvedConfiguration } from "@smithy/smithy-client";
-import type { MiddlewareStack, Handler } from "@smithy/types";
+import type { HttpHandlerOptions } from "@smithy/types";
 import { type Mock, vi } from "vitest";
 import {
   createNoSuchKeyError,
@@ -26,6 +26,7 @@ import { createStream, type StreamInput } from "./utils/stream-helpers.js";
 // Define structural types to avoid strict dependency on specific @smithy/types versions
 export interface MetadataBearer {
   $metadata?: unknown;
+  [key: string]: unknown;
 }
 
 export interface StructuralCommand<
@@ -34,12 +35,8 @@ export interface StructuralCommand<
 > {
   // Make input readonly to match SDK Command interface for better inference
   readonly input: TInput;
-  middlewareStack: MiddlewareStack<TInput, TOutput>;
-  resolveMiddleware(
-    stack: MiddlewareStack<TInput, TOutput>,
-    configuration: unknown,
-    options: unknown,
-  ): Handler<TInput, TOutput>;
+  /** @internal Phantom output type to preserve TOutput without structural constraints */
+  readonly __awsSdkVitestMockOutput?: TOutput;
 }
 
 export type CommandConstructor<
@@ -49,14 +46,16 @@ export type CommandConstructor<
 
 export type AnyClient = {
   send(command: AnyCommand): Promise<MetadataBearer>;
-  config: SmithyResolvedConfiguration<unknown>;
+  config:
+    | SmithyResolvedConfiguration<HttpHandlerOptions>
+    | Record<string, unknown>;
 };
 
 export type AnyCommand = StructuralCommand<object, MetadataBearer>;
 
 // Allow protected constructors by accepting prototype property directly if needed
 export type ClientConstructor<TClient extends AnyClient> =
-  | (abstract new (config: unknown) => TClient)
+  | (abstract new (...args: unknown[]) => TClient)
   | { prototype: TClient };
 
 type CommandHandler<
