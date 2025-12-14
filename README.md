@@ -99,6 +99,55 @@ s3Mock
 // All other calls return 'subsequent calls'
 ```
 
+### Stream Mocking (S3 Helper)
+
+Mock S3 operations that return streams with automatic environment detection:
+
+```typescript
+// Mock with string content
+s3Mock.on(GetObjectCommand).resolvesStream("Hello, World!");
+
+// Mock with Buffer
+s3Mock.on(GetObjectCommand).resolvesStream(Buffer.from("Binary data"));
+
+// One-time stream response
+s3Mock
+  .on(GetObjectCommand)
+  .resolvesStreamOnce("First call")
+  .resolvesStream("Subsequent calls");
+```
+
+### Delay/Latency Simulation
+
+Simulate network delays for testing timeouts and race conditions:
+
+```typescript
+// Resolve with delay
+s3Mock.on(GetObjectCommand).resolvesWithDelay({ Body: "data" }, 1000);
+
+// Reject with delay
+s3Mock.on(GetObjectCommand).rejectsWithDelay("Network timeout", 500);
+```
+
+### AWS Error Simulation
+
+Convenient methods for common AWS errors:
+
+```typescript
+// S3 Errors
+s3Mock.on(GetObjectCommand).rejectsWithNoSuchKey("missing-key");
+s3Mock.on(GetObjectCommand).rejectsWithNoSuchBucket("missing-bucket");
+s3Mock.on(GetObjectCommand).rejectsWithAccessDenied("protected-resource");
+
+// DynamoDB Errors
+dynamoMock.on(GetItemCommand).rejectsWithResourceNotFound("missing-table");
+dynamoMock.on(PutItemCommand).rejectsWithConditionalCheckFailed();
+
+// General AWS Errors
+s3Mock.on(GetObjectCommand).rejectsWithThrottling();
+s3Mock.on(GetObjectCommand).rejectsWithInternalServerError();
+```
+
 ### Error Handling
 
 ```typescript
@@ -182,6 +231,9 @@ test("should call DynamoDB", async () => {
   expect(ddbMock).toHaveReceivedNthCommandWith(1, GetItemCommand, {
     TableName: "users",
   });
+
+  // Assert no other commands were received
+  expect(ddbMock).toHaveReceivedNoOtherCommands([GetItemCommand]);
 });
 ```
 
@@ -214,6 +266,17 @@ Mocks an existing AWS SDK client instance.
 - `rejectsOnce(error)` - Return error once
 - `callsFake(handler)` - Custom response handler
 - `callsFakeOnce(handler)` - Custom response handler (once)
+- `resolvesStream(data)` - Return stream response (S3 helper)
+- `resolvesStreamOnce(data)` - Return stream response once (S3 helper)
+- `resolvesWithDelay(output, delayMs)` - Return response with delay
+- `rejectsWithDelay(error, delayMs)` - Return error with delay
+- `rejectsWithNoSuchKey(key?)` - Reject with S3 NoSuchKey error
+- `rejectsWithNoSuchBucket(bucket?)` - Reject with S3 NoSuchBucket error
+- `rejectsWithAccessDenied(resource?)` - Reject with AccessDenied error
+- `rejectsWithResourceNotFound(resource?)` - Reject with DynamoDB ResourceNotFound error
+- `rejectsWithConditionalCheckFailed()` - Reject with DynamoDB ConditionalCheckFailed error
+- `rejectsWithThrottling()` - Reject with Throttling error
+- `rejectsWithInternalServerError()` - Reject with InternalServerError
 
 ## 🤝 Contributing
 

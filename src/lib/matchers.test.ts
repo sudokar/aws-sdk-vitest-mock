@@ -1,6 +1,10 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  GetItemCommand,
+  PutItemCommand,
+} from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
-import { expect, test, beforeEach } from "vitest";
+import { expect, test, beforeEach, vi } from "vitest";
 import { matchers } from "./matchers.js";
 import type { AwsSdkMatchers, MatcherResult } from "./matchers.js";
 import { mockClient } from "./mock-client.js";
@@ -217,4 +221,63 @@ test("toHaveReceivedNthCommandWith returns expected message when nth command mis
   expect(result.message()).toBe(
     "Expected AWS SDK mock to have received at least 2 call(s), but received 1.",
   );
+});
+
+test("toHaveReceivedNoOtherCommands should pass when no other commands received", async () => {
+  const mock = mockClient(DynamoDBClient);
+  const client = new DynamoDBClient({});
+
+  mock.on(GetItemCommand).resolves({ Item: { id: { S: "1" } } });
+  await client.send(
+    new GetItemCommand({ TableName: "test", Key: { id: { S: "1" } } }),
+  );
+
+  const result = matchers.toHaveReceivedNoOtherCommands.call(
+    { equals: vi.fn() },
+    mock,
+    [GetItemCommand],
+  ) as MatcherResult;
+
+  expect(result.pass).toBe(true);
+  mock.restore();
+});
+
+test("toHaveReceivedNoOtherCommands should fail when unexpected commands received", async () => {
+  const mock = mockClient(DynamoDBClient);
+  const client = new DynamoDBClient({});
+
+  mock.on(GetItemCommand).resolves({ Item: { id: { S: "1" } } });
+  mock.on(PutItemCommand).resolves({});
+
+  await client.send(
+    new GetItemCommand({ TableName: "test", Key: { id: { S: "1" } } }),
+  );
+  await client.send(
+    new PutItemCommand({ TableName: "test", Item: { id: { S: "2" } } }),
+  );
+
+  const result = matchers.toHaveReceivedNoOtherCommands.call(
+    { equals: vi.fn() },
+    mock,
+    [GetItemCommand],
+  ) as MatcherResult;
+
+  expect(result.pass).toBe(false);
+  expect(result.message()).toBe(
+    "Expected AWS SDK mock to have received no other commands, but received: PutItemCommand",
+  );
+  mock.restore();
+});
+
+test("toHaveReceivedNoOtherCommands should pass with empty expected commands", () => {
+  const mock = mockClient(DynamoDBClient);
+
+  const result = matchers.toHaveReceivedNoOtherCommands.call(
+    { equals: vi.fn() },
+    mock,
+    [],
+  ) as MatcherResult;
+
+  expect(result.pass).toBe(true);
+  mock.restore();
 });

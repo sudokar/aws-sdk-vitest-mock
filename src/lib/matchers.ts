@@ -125,6 +125,37 @@ export const matchers = {
       },
     };
   },
+
+  toHaveReceivedNoOtherCommands(
+    received: AwsClientStub,
+    expectedCommands: CommandConstructor[] = [],
+  ): MatcherResult {
+    const calls = getCommandCalls(received);
+    const unexpectedCalls = calls.filter((call) => {
+      const command = call[0];
+      return !expectedCommands.some(
+        (expectedCommand) => command instanceof expectedCommand,
+      );
+    });
+
+    const pass = unexpectedCalls.length === 0;
+
+    return {
+      pass,
+      message: (): string => {
+        if (pass) {
+          return `Expected AWS SDK mock to have received other commands besides ${expectedCommands.map((c) => c.name).join(", ")}`;
+        }
+
+        const unexpectedCommandNames = unexpectedCalls.map((call) => {
+          const command = call[0] as { constructor?: { name?: string } };
+          return command.constructor?.name ?? "Unknown";
+        });
+
+        return `Expected AWS SDK mock to have received no other commands, but received: ${unexpectedCommandNames.join(", ")}`;
+      },
+    };
+  },
 };
 
 export interface AwsSdkMatchers<R = unknown> {
@@ -139,6 +170,7 @@ export interface AwsSdkMatchers<R = unknown> {
     command: CommandConstructor,
     input: Record<string, unknown>,
   ): R;
+  toHaveReceivedNoOtherCommands(expectedCommands?: CommandConstructor[]): R;
 }
 
 export type { MatcherResult };
