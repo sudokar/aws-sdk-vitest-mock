@@ -543,6 +543,10 @@ bun nx build
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the complete guide.
 
+## 🙏 Acknowledgements
+
+This library was inspired by [aws-sdk-client-mock](https://github.com/m-radzikowski/aws-sdk-client-mock). Adapted the core concepts and API design for Vitest while adding additional features and capabilities.
+
 ## 📝 License
 
 MIT
