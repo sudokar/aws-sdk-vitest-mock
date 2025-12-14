@@ -11,6 +11,12 @@ import {
   createInternalServerError,
 } from "./utils/aws-errors.js";
 import {
+  createDebugLogger,
+  enableDebug,
+  disableDebug,
+  type DebugLogger,
+} from "./utils/debug-logger.js";
+import {
   createPaginatedResponses,
   type PaginatorOptions,
 } from "./utils/paginator-helpers.js";
@@ -147,6 +153,8 @@ export interface AwsClientStub<TClient extends AnyClient = AnyClient> {
   reset: () => void;
   restore: () => void;
   calls: () => ReturnType<Mock["mock"]["calls"]["slice"]>;
+  enableDebug: () => void;
+  disableDebug: () => void;
 }
 
 export interface AwsCommandStub<
@@ -233,6 +241,7 @@ export interface AwsCommandStub<
 
 type MocksContainer = {
   map: WeakMap<CommandConstructor<object, MetadataBearer>, MockEntry[]>;
+  debugLogger: DebugLogger;
 };
 
 function createMockImplementation(
@@ -245,10 +254,20 @@ function createMockImplementation(
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const client = this;
     const getClient = () => client;
+
+    container.debugLogger.log(
+      `Received command: ${command.constructor.name}`,
+      command.input,
+    );
+
     const mocks = container.map.get(
       command.constructor as CommandConstructor<object, MetadataBearer>,
     );
     if (mocks) {
+      container.debugLogger.log(
+        `Found ${mocks.length} mock(s) for ${command.constructor.name}`,
+      );
+
       const matchingIndex = mocks.findIndex((mock) => {
         const isMatch = mock.strict
           ? mock.matcher && matchesStrict(command.input, mock.matcher)
@@ -256,14 +275,30 @@ function createMockImplementation(
         return isMatch;
       });
 
-      if (matchingIndex !== -1) {
+      if (matchingIndex === -1) {
+        container.debugLogger.log(
+          `No matching mock found for ${command.constructor.name}`,
+          command.input,
+        );
+      } else {
         // eslint-disable-next-line security/detect-object-injection
         const mock = mocks[matchingIndex];
+        container.debugLogger.log(
+          `Using mock at index ${matchingIndex} for ${command.constructor.name}`,
+        );
+
         if (mock.once) {
           mocks.splice(matchingIndex, 1);
+          container.debugLogger.log(
+            `Removed one-time mock for ${command.constructor.name}`,
+          );
         }
         return mock.handler(command.input, getClient);
       }
+    } else {
+      container.debugLogger.log(
+        `No mocks configured for ${command.constructor.name}`,
+      );
     }
 
     throw new Error(
@@ -499,6 +534,7 @@ export const mockClient = <TClient extends AnyClient>(
 ): AwsClientStub<TClient> => {
   const mocksContainer: MocksContainer = {
     map: new WeakMap(),
+    debugLogger: createDebugLogger(),
   };
 
   // Use type assertion to handle both constructor and prototype-only objects
@@ -529,6 +565,12 @@ export const mockClient = <TClient extends AnyClient>(
       mocksContainer.map = new WeakMap();
     },
     calls: (): Mock["mock"]["calls"] => sendSpy.mock.calls,
+    enableDebug: (): void => {
+      enableDebug(mocksContainer.debugLogger);
+    },
+    disableDebug: (): void => {
+      disableDebug(mocksContainer.debugLogger);
+    },
   };
 
   return stub;
@@ -539,6 +581,7 @@ export const mockClientInstance = <TClient extends AnyClient>(
 ): AwsClientStub<AnyClient> => {
   const mocksContainer: MocksContainer = {
     map: new WeakMap(),
+    debugLogger: createDebugLogger(),
   };
 
   // Use type assertion to work around vi.spyOn strict typing
@@ -563,6 +606,12 @@ export const mockClientInstance = <TClient extends AnyClient>(
       mocksContainer.map = new WeakMap();
     },
     calls: (): Mock["mock"]["calls"] => sendSpy.mock.calls,
+    enableDebug: (): void => {
+      enableDebug(mocksContainer.debugLogger);
+    },
+    disableDebug: (): void => {
+      disableDebug(mocksContainer.debugLogger);
+    },
   };
 
   return stub;

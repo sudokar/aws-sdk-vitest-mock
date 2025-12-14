@@ -219,6 +219,52 @@ const result = await existingClient.send(
 );
 ```
 
+### Debug Mode
+
+Enable debug logging to troubleshoot mock configurations and see detailed information about command matching:
+
+```typescript
+const s3Mock = mockClient(S3Client);
+
+// Enable debug logging
+s3Mock.enableDebug();
+
+s3Mock
+  .on(GetObjectCommand, { Bucket: "test-bucket" })
+  .resolves({ Body: "data" });
+
+// This will log:
+// [AWS Mock Debug] Received command: GetObjectCommand
+// [AWS Mock Debug] Found 1 mock(s) for GetObjectCommand
+// [AWS Mock Debug] Using mock at index 0 for GetObjectCommand
+await client.send(
+  new GetObjectCommand({ Bucket: "test-bucket", Key: "file.txt" }),
+);
+
+// Disable debug logging
+s3Mock.disableDebug();
+```
+
+Debug mode logs include:
+
+- Incoming commands and their inputs
+- Number of configured mocks for each command
+- Mock matching results and reasons for failures
+- One-time mock removal notifications
+
+## 🧪 Test Coverage
+
+The library includes comprehensive test suites covering all features:
+
+- **Core mocking functionality** - Command matching, response handling, sequential responses
+- **Paginator support** - Automatic token handling for AWS pagination patterns
+- **Debug logging** - Enable/disable functionality and proper console output formatting
+- **Stream mocking** - S3 stream responses with environment detection
+- **Error simulation** - AWS-specific errors and general error handling
+- **Custom matchers** - Vitest integration for asserting command calls
+
+All utilities have dedicated test files ensuring reliability and maintainability.
+
 ## 🧪 Custom Matchers
 
 Import the custom matchers in your test setup:
@@ -289,6 +335,8 @@ Mocks an existing AWS SDK client instance.
 - `reset()` - Clear all mocks and call history
 - `restore()` - Restore original client behavior
 - `calls()` - Get call history
+- `enableDebug()` - Enable debug logging for troubleshooting
+- `disableDebug()` - Disable debug logging
 
 ### `AwsCommandStub` Methods (Chainable)
 

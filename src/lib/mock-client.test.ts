@@ -6,7 +6,7 @@ import {
   GetObjectCommandInput,
   GetObjectCommandOutput,
 } from "@aws-sdk/client-s3";
-import { expect, test, beforeEach, afterEach, describe } from "vitest";
+import { expect, test, beforeEach, afterEach, describe, vi } from "vitest";
 import {
   mockClient,
   mockClientInstance,
@@ -1098,5 +1098,135 @@ describe("Paginator Support", () => {
 
     expect(result.Items).toEqual(items);
     expect(result.NextToken).toBeUndefined();
+  });
+});
+
+describe("Debug Mode", () => {
+  let s3Mock: ReturnType<typeof mockClient>;
+  let s3Client: S3Client;
+  let consoleSpy: any;
+
+  beforeEach(() => {
+    s3Mock = mockClient(S3Client);
+    s3Client = new S3Client({});
+    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => void 0);
+  });
+
+  afterEach(() => {
+    s3Mock.restore();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    consoleSpy.mockRestore();
+  });
+
+  test("should not log when debug is disabled", async () => {
+    s3Mock.on(GetObjectCommand).resolves({ Body: "test" });
+
+    await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
+
+  test("should log when debug is enabled", async () => {
+    s3Mock.enableDebug();
+    s3Mock.on(GetObjectCommand).resolves({ Body: "test" });
+
+    await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[AWS Mock Debug] Received command: GetObjectCommand",
+      { Bucket: "test-bucket", Key: "test-key" },
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[AWS Mock Debug] Found 1 mock(s) for GetObjectCommand",
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[AWS Mock Debug] Using mock at index 0 for GetObjectCommand",
+    );
+  });
+
+  test("should log when no mock is found", async () => {
+    s3Mock.enableDebug();
+
+    await expect(
+      s3Client.send(
+        new GetObjectCommand({
+          Bucket: "test-bucket",
+          Key: "test-key",
+        }),
+      ),
+    ).rejects.toThrow();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[AWS Mock Debug] Received command: GetObjectCommand",
+      { Bucket: "test-bucket", Key: "test-key" },
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[AWS Mock Debug] No mocks configured for GetObjectCommand",
+    );
+  });
+
+  test("should log when mock does not match", async () => {
+    s3Mock.enableDebug();
+    s3Mock
+      .on(GetObjectCommand, { Bucket: "other-bucket" })
+      .resolves({ Body: "test" });
+
+    await expect(
+      s3Client.send(
+        new GetObjectCommand({
+          Bucket: "test-bucket",
+          Key: "test-key",
+        }),
+      ),
+    ).rejects.toThrow();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[AWS Mock Debug] Found 1 mock(s) for GetObjectCommand",
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[AWS Mock Debug] No matching mock found for GetObjectCommand",
+      { Bucket: "test-bucket", Key: "test-key" },
+    );
+  });
+
+  test("should log when one-time mock is removed", async () => {
+    s3Mock.enableDebug();
+    s3Mock.on(GetObjectCommand).resolvesOnce({ Body: "test" });
+
+    await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[AWS Mock Debug] Removed one-time mock for GetObjectCommand",
+    );
+  });
+
+  test("should stop logging when debug is disabled", async () => {
+    s3Mock.enableDebug();
+    s3Mock.disableDebug();
+    s3Mock.on(GetObjectCommand).resolves({ Body: "test" });
+
+    await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(consoleSpy).not.toHaveBeenCalled();
   });
 });
