@@ -126,10 +126,12 @@ function matchesStrict<T extends object>(
 
   return matcherKeys.every((key) => {
     if (!Object.prototype.hasOwnProperty.call(input, key)) return false;
-    // eslint-disable-next-line security/detect-object-injection
-    const inputValue = (input as Record<string, unknown>)[key];
-    // eslint-disable-next-line security/detect-object-injection
-    const matcherValue = (matcher as Record<string, unknown>)[key];
+    const inputRecord = input as Record<string, unknown>;
+    const matcherRecord = matcher as Record<string, unknown>;
+    // eslint-disable-next-line security/detect-object-injection -- Dynamic property access required for command input matching
+    const inputValue = inputRecord[key];
+    // eslint-disable-next-line security/detect-object-injection -- Dynamic property access required for matcher comparison
+    const matcherValue = matcherRecord[key];
 
     if (
       typeof inputValue === "object" &&
@@ -256,9 +258,7 @@ function createMockImplementation(
     this: AnyClient,
     command: AnyCommand,
   ): Promise<MetadataBearer> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const client = this;
-    const getClient = () => client;
+    const getClient = (): AnyClient => this;
 
     container.debugLogger.log(
       `Received command: ${command.constructor.name}`,
@@ -286,8 +286,11 @@ function createMockImplementation(
           command.input,
         );
       } else {
-        // eslint-disable-next-line security/detect-object-injection
+        // eslint-disable-next-line security/detect-object-injection -- Array access with validated index for mock retrieval
         const mock = mocks[matchingIndex];
+        if (!mock) {
+          throw new Error(`Mock at index ${matchingIndex} not found`);
+        }
         container.debugLogger.log(
           `Using mock at index ${matchingIndex} for ${command.constructor.name}`,
         );
@@ -498,7 +501,7 @@ function createCommandStub<
       addEntry((input) => {
         const tokenKey = options.tokenKey || "NextToken";
         const inputRecord = input as Record<string, unknown>;
-        // eslint-disable-next-line security/detect-object-injection
+        // eslint-disable-next-line security/detect-object-injection -- Dynamic token key access required for AWS pagination handling
         const inputToken = inputRecord[tokenKey] as string | undefined;
 
         if (inputToken) {
@@ -515,9 +518,8 @@ function createCommandStub<
           currentIndex = 0;
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        // eslint-disable-next-line security/detect-object-injection, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- Array access with calculated index for pagination response retrieval
         const response =
-          // eslint-disable-next-line
           responses[currentIndex] || responses.at(-1) || responses[0];
         if (!response) {
           throw new Error("No paginated responses available");
@@ -553,11 +555,7 @@ export const mockClient = <TClient extends AnyClient>(
   };
 
   // Use type assertion to handle both constructor and prototype-only objects
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const prototype =
-    "prototype" in clientConstructor
-      ? clientConstructor.prototype
-      : (clientConstructor as unknown as { prototype: TClient }).prototype;
+  const prototype = (clientConstructor as { prototype: TClient }).prototype;
 
   const sendSpy = vi
     .spyOn(prototype, "send")

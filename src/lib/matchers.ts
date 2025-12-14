@@ -176,7 +176,7 @@ export interface AwsSdkMatchers<R = unknown> {
 export type { MatcherResult };
 
 declare module "vitest" {
-  /* eslint-disable @typescript-eslint/no-empty-object-type, @typescript-eslint/no-empty-interface */
+  /* eslint-disable @typescript-eslint/no-empty-object-type, @typescript-eslint/no-empty-interface -- Required for Vitest module augmentation to extend assertion interfaces */
   interface Assertion extends AwsSdkMatchers {}
   interface AsymmetricMatchersContaining extends AwsSdkMatchers {}
   /* eslint-enable @typescript-eslint/no-empty-object-type, @typescript-eslint/no-empty-interface */

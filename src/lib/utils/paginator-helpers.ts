@@ -31,9 +31,9 @@ export function createPaginatedResponses<T>(
     const response = { [itemsKey]: pageItems } as PaginatedResponse<T>;
 
     if (hasMore) {
-      // eslint-disable-next-line security/detect-object-injection
-      (response as Record<string, unknown>)[tokenKey] =
-        `token-${index + pageSize}`;
+      const responseRecord = response as Record<string, unknown>;
+      // eslint-disable-next-line security/detect-object-injection -- Dynamic token key assignment required for AWS pagination simulation
+      responseRecord[tokenKey] = `token-${index + pageSize}`;
     }
 
     responses.push(response);
