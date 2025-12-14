@@ -16,6 +16,19 @@
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"]
+    },
+    "@nx/vite:build": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
+    },
+    "@nx/vitest:test": {
+      "cache": true,
+      "inputs": ["default", "^production"]
+    },
+    "lint": {
+      "cache": true,
+      "inputs": ["default"]
     }
   },
   "plugins": [
@@ -28,7 +41,9 @@
   "release": {
     "projects": ["aws-sdk-vitest-mock"],
     "version": { "conventionalCommits": true },
-    "changelog": { "workspaceChangelog": { "createRelease": "github", "file": false } },
+    "changelog": {
+      "workspaceChangelog": { "createRelease": "github", "file": false }
+    },
     "releaseTag": {
       "pattern": "release/{version}"
     },
