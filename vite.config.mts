@@ -29,7 +29,7 @@ export default defineConfig(() => ({
       formats: ["es", "cjs"] satisfies LibraryFormats[],
     },
     rollupOptions: {
-      external: ["vitest"],
+      external: ["vitest", "node:fs", "node:path", "node:stream"],
     },
   },
   test: {

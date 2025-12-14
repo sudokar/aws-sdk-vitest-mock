@@ -6,12 +6,13 @@ import {
   GetObjectCommandInput,
   GetObjectCommandOutput,
 } from "@aws-sdk/client-s3";
-import { expect, test, beforeEach, afterEach, describe } from "vitest";
+import { expect, test, beforeEach, afterEach, describe, vi } from "vitest";
 import {
   mockClient,
   mockClientInstance,
   AwsClientStub,
 } from "./mock-client.js";
+import "./vitest-setup.js";
 
 describe("mockClient", () => {
   let s3Mock: AwsClientStub<S3Client>;
@@ -629,5 +630,673 @@ describe("multiple clients", () => {
     await expect(
       client.send(new PutObjectCommand({ Bucket: "b", Key: "k" })),
     ).rejects.toThrow("No mock configured for command: PutObjectCommand");
+  });
+});
+
+describe("Stream Mocking", () => {
+  let s3Mock: ReturnType<typeof mockClient>;
+  let s3Client: S3Client;
+
+  beforeEach(() => {
+    s3Mock = mockClient(S3Client);
+    s3Client = new S3Client({});
+  });
+
+  afterEach(() => {
+    s3Mock.restore();
+  });
+
+  test("should mock S3 GetObject with string stream", async () => {
+    const testData = "Hello, World!";
+    s3Mock.on(GetObjectCommand).resolvesStream(testData);
+
+    const result = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(result.Body).toBeDefined();
+  });
+
+  test("should mock S3 GetObject with Buffer stream", async () => {
+    const testData = Buffer.from("Binary data");
+    s3Mock.on(GetObjectCommand).resolvesStream(testData);
+
+    const result = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(result.Body).toBeDefined();
+  });
+
+  test("should mock S3 GetObject with stream once", async () => {
+    s3Mock
+      .on(GetObjectCommand)
+      .resolvesStreamOnce("First call")
+      .resolvesStream("Subsequent calls");
+
+    const result1 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    const result2 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(result1.Body).toBeDefined();
+    expect(result2.Body).toBeDefined();
+  });
+});
+
+describe("Delay Simulation", () => {
+  let s3Mock: ReturnType<typeof mockClient>;
+  let s3Client: S3Client;
+
+  beforeEach(() => {
+    s3Mock = mockClient(S3Client);
+    s3Client = new S3Client({});
+  });
+
+  afterEach(() => {
+    s3Mock.restore();
+  });
+
+  test("should resolve with delay", async () => {
+    const startTime = Date.now();
+    s3Mock
+      .on(GetObjectCommand)
+      .resolvesWithDelay({ Body: "delayed data" }, 100);
+
+    const result = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    const endTime = Date.now();
+    expect(endTime - startTime).toBeGreaterThanOrEqual(100);
+    expect(result.Body).toBe("delayed data");
+  });
+
+  test("should reject with delay", async () => {
+    const startTime = Date.now();
+    s3Mock.on(GetObjectCommand).rejectsWithDelay("Delayed error", 50);
+
+    await expect(
+      s3Client.send(
+        new GetObjectCommand({
+          Bucket: "test-bucket",
+          Key: "test-key",
+        }),
+      ),
+    ).rejects.toThrow("Delayed error");
+
+    const endTime = Date.now();
+    expect(endTime - startTime).toBeGreaterThanOrEqual(50);
+  });
+});
+
+describe("AWS Error Simulation", () => {
+  let s3Mock: ReturnType<typeof mockClient>;
+  let dynamoMock: ReturnType<typeof mockClient>;
+  let s3Client: S3Client;
+  let dynamoClient: DynamoDBClient;
+
+  beforeEach(() => {
+    s3Mock = mockClient(S3Client);
+    dynamoMock = mockClient(DynamoDBClient);
+    s3Client = new S3Client({});
+    dynamoClient = new DynamoDBClient({});
+  });
+
+  afterEach(() => {
+    s3Mock.restore();
+    dynamoMock.restore();
+  });
+
+  test("should reject with NoSuchKey error", async () => {
+    s3Mock.on(GetObjectCommand).rejectsWithNoSuchKey("missing-key");
+
+    await expect(
+      s3Client.send(
+        new GetObjectCommand({
+          Bucket: "test-bucket",
+          Key: "missing-key",
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "NoSuchKey",
+      statusCode: 404,
+      message: expect.stringContaining("missing-key") as string,
+    });
+  });
+
+  test("should reject with NoSuchBucket error", async () => {
+    s3Mock.on(GetObjectCommand).rejectsWithNoSuchBucket("missing-bucket");
+
+    await expect(
+      s3Client.send(
+        new GetObjectCommand({
+          Bucket: "missing-bucket",
+          Key: "test-key",
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "NoSuchBucket",
+      statusCode: 404,
+      message: expect.stringContaining("missing-bucket") as string,
+    });
+  });
+
+  test("should reject with AccessDenied error", async () => {
+    s3Mock.on(GetObjectCommand).rejectsWithAccessDenied("protected-resource");
+
+    await expect(
+      s3Client.send(
+        new GetObjectCommand({
+          Bucket: "test-bucket",
+          Key: "protected-key",
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "AccessDenied",
+      statusCode: 403,
+      message: expect.stringContaining("protected-resource") as string,
+    });
+  });
+
+  test("should reject with DynamoDB ResourceNotFound error", async () => {
+    dynamoMock.on(GetItemCommand).rejectsWithResourceNotFound("missing-table");
+
+    await expect(
+      dynamoClient.send(
+        new GetItemCommand({
+          TableName: "missing-table",
+          Key: { id: { S: "123" } },
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "ResourceNotFoundException",
+      statusCode: 400,
+      message: expect.stringContaining("missing-table") as string,
+    });
+  });
+
+  test("should reject with ConditionalCheckFailed error", async () => {
+    dynamoMock.on(GetItemCommand).rejectsWithConditionalCheckFailed();
+
+    await expect(
+      dynamoClient.send(
+        new GetItemCommand({
+          TableName: "test-table",
+          Key: { id: { S: "123" } },
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "ConditionalCheckFailedException",
+      statusCode: 400,
+    });
+  });
+
+  test("should reject with Throttling error", async () => {
+    s3Mock.on(GetObjectCommand).rejectsWithThrottling();
+
+    await expect(
+      s3Client.send(
+        new GetObjectCommand({
+          Bucket: "test-bucket",
+          Key: "test-key",
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "Throttling",
+      statusCode: 400,
+      retryable: true,
+    });
+  });
+
+  test("should reject with InternalServerError", async () => {
+    s3Mock.on(GetObjectCommand).rejectsWithInternalServerError();
+
+    await expect(
+      s3Client.send(
+        new GetObjectCommand({
+          Bucket: "test-bucket",
+          Key: "test-key",
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "InternalServerError",
+      statusCode: 500,
+      retryable: true,
+    });
+  });
+});
+
+describe("Strict Command Verification", () => {
+  let s3Mock: ReturnType<typeof mockClient>;
+  let s3Client: S3Client;
+
+  beforeEach(() => {
+    s3Mock = mockClient(S3Client);
+    s3Client = new S3Client({});
+  });
+
+  afterEach(() => {
+    s3Mock.restore();
+  });
+
+  test("should pass when no other commands are received", async () => {
+    s3Mock.on(GetObjectCommand).resolves({ Body: "test" });
+
+    await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(s3Mock).toHaveReceivedNoOtherCommands([GetObjectCommand]);
+  });
+
+  test("should fail when unexpected commands are received", async () => {
+    s3Mock.on(GetObjectCommand).resolves({ Body: "test" });
+    s3Mock.on(PutObjectCommand).resolves({});
+
+    await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+        Body: "data",
+      }),
+    );
+
+    expect(() => {
+      expect(s3Mock).toHaveReceivedNoOtherCommands([GetObjectCommand]);
+    }).toThrow(
+      "Expected AWS SDK mock to have received \u001B[90mno other commands\u001B[39m, but received: \u001B[31mPutObjectCommand\u001B[39m",
+    );
+  });
+
+  test("should pass when all expected commands are allowed", async () => {
+    s3Mock.on(GetObjectCommand).resolves({ Body: "test" });
+    s3Mock.on(PutObjectCommand).resolves({});
+
+    await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+        Body: "data",
+      }),
+    );
+
+    expect(s3Mock).toHaveReceivedNoOtherCommands([
+      GetObjectCommand,
+      PutObjectCommand,
+    ]);
+  });
+});
+
+describe("Paginator Support", () => {
+  let dynamoMock: ReturnType<typeof mockClient>;
+  let s3Mock: ReturnType<typeof mockClient>;
+  let dynamoClient: DynamoDBClient;
+  let s3Client: S3Client;
+
+  beforeEach(() => {
+    dynamoMock = mockClient(DynamoDBClient);
+    s3Mock = mockClient(S3Client);
+    dynamoClient = new DynamoDBClient({});
+    s3Client = new S3Client({});
+  });
+
+  afterEach(() => {
+    dynamoMock.restore();
+    s3Mock.restore();
+  });
+
+  test("should simulate DynamoDB scan pagination", async () => {
+    const items = Array.from({ length: 25 }, (_, index) => ({
+      id: { S: `item-${index + 1}` },
+    }));
+
+    dynamoMock.on(GetItemCommand).resolvesPaginated(items, {
+      pageSize: 10,
+      itemsKey: "Items",
+    });
+
+    // First page
+    const result1 = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: "test-table",
+      }),
+    );
+
+    expect(result1.Items).toHaveLength(10);
+    expect((result1.Items as Array<{ id: { S: string } }>)[0]).toEqual({
+      id: { S: "item-1" },
+    });
+    expect(result1.NextToken).toBe("token-10");
+
+    // Second page
+    const result2 = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: "test-table",
+        NextToken: "token-10",
+      }),
+    );
+
+    expect(result2.Items).toHaveLength(10);
+    expect((result2.Items as Array<{ id: { S: string } }>)[0]).toEqual({
+      id: { S: "item-11" },
+    });
+    expect(result2.NextToken).toBe("token-20");
+
+    // Third page
+    const result3 = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: "test-table",
+        NextToken: "token-20",
+      }),
+    );
+
+    expect(result3.Items).toHaveLength(5);
+    expect((result3.Items as Array<{ id: { S: string } }>)[0]).toEqual({
+      id: { S: "item-21" },
+    });
+    expect(result3.NextToken).toBeUndefined();
+  });
+
+  test("should simulate S3 list objects pagination", async () => {
+    const objects = Array.from({ length: 15 }, (_, index) => ({
+      Key: `file-${index + 1}.txt`,
+    }));
+
+    s3Mock.on(GetObjectCommand).resolvesPaginated(objects, {
+      pageSize: 10,
+      tokenKey: "ContinuationToken",
+      itemsKey: "Contents",
+    });
+
+    // First page
+    const result1 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+      }),
+    );
+
+    expect(result1.Contents).toHaveLength(10);
+    expect((result1.Contents as Array<{ Key: string }>)[0]).toEqual({
+      Key: "file-1.txt",
+    });
+    expect(result1.ContinuationToken).toBe("token-10");
+
+    // Second page
+    const result2 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        ContinuationToken: "token-10",
+      }),
+    );
+
+    expect(result2.Contents).toHaveLength(5);
+    expect((result2.Contents as Array<{ Key: string }>)[0]).toEqual({
+      Key: "file-11.txt",
+    });
+    expect(result2.ContinuationToken).toBeUndefined();
+  });
+
+  test("should handle empty paginated results", async () => {
+    dynamoMock.on(GetItemCommand).resolvesPaginated([]);
+
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: "test-table",
+      }),
+    );
+
+    expect(result.Items).toEqual([]);
+    expect(result.NextToken).toBeUndefined();
+  });
+
+  test("should handle single page results", async () => {
+    const items = [{ id: { S: "item-1" } }, { id: { S: "item-2" } }];
+
+    dynamoMock.on(GetItemCommand).resolvesPaginated(items, { pageSize: 10 });
+
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: "test-table",
+      }),
+    );
+
+    expect(result.Items).toEqual(items);
+    expect(result.NextToken).toBeUndefined();
+  });
+});
+
+describe("Debug Mode", () => {
+  let s3Mock: ReturnType<typeof mockClient>;
+  let s3Client: S3Client;
+  let consoleSpy: any;
+
+  beforeEach(() => {
+    s3Mock = mockClient(S3Client);
+    s3Client = new S3Client({});
+    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => void 0);
+  });
+
+  afterEach(() => {
+    s3Mock.restore();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    consoleSpy.mockRestore();
+  });
+
+  test("should not log when debug is disabled", async () => {
+    s3Mock.on(GetObjectCommand).resolves({ Body: "test" });
+
+    await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
+
+  test("should log when debug is enabled", async () => {
+    s3Mock.enableDebug();
+    s3Mock.on(GetObjectCommand).resolves({ Body: "test" });
+
+    await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[aws-sdk-vitest-mock](Debug) Received command: GetObjectCommand",
+      { Bucket: "test-bucket", Key: "test-key" },
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[aws-sdk-vitest-mock](Debug) Found 1 mock(s) for GetObjectCommand",
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[aws-sdk-vitest-mock](Debug) Using mock at index 0 for GetObjectCommand",
+    );
+  });
+
+  test("should log when no mock is found", async () => {
+    s3Mock.enableDebug();
+
+    await expect(
+      s3Client.send(
+        new GetObjectCommand({
+          Bucket: "test-bucket",
+          Key: "test-key",
+        }),
+      ),
+    ).rejects.toThrow();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[aws-sdk-vitest-mock](Debug) Received command: GetObjectCommand",
+      { Bucket: "test-bucket", Key: "test-key" },
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[aws-sdk-vitest-mock](Debug) No mocks configured for GetObjectCommand",
+    );
+  });
+
+  test("should log when mock does not match", async () => {
+    s3Mock.enableDebug();
+    s3Mock
+      .on(GetObjectCommand, { Bucket: "other-bucket" })
+      .resolves({ Body: "test" });
+
+    await expect(
+      s3Client.send(
+        new GetObjectCommand({
+          Bucket: "test-bucket",
+          Key: "test-key",
+        }),
+      ),
+    ).rejects.toThrow();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[aws-sdk-vitest-mock](Debug) Found 1 mock(s) for GetObjectCommand",
+    );
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[aws-sdk-vitest-mock](Debug) No matching mock found for GetObjectCommand",
+      { Bucket: "test-bucket", Key: "test-key" },
+    );
+  });
+
+  test("should log when one-time mock is removed", async () => {
+    s3Mock.enableDebug();
+    s3Mock.on(GetObjectCommand).resolvesOnce({ Body: "test" });
+
+    await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "[aws-sdk-vitest-mock](Debug) Removed one-time mock for GetObjectCommand",
+    );
+  });
+
+  test("should stop logging when debug is disabled", async () => {
+    s3Mock.enableDebug();
+    s3Mock.disableDebug();
+    s3Mock.on(GetObjectCommand).resolves({ Body: "test" });
+
+    await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("Fixture Loading", () => {
+  let s3Mock: ReturnType<typeof mockClient>;
+  let s3Client: S3Client;
+
+  beforeEach(() => {
+    s3Mock = mockClient(S3Client);
+    s3Client = new S3Client({});
+  });
+
+  afterEach(() => {
+    s3Mock.restore();
+  });
+
+  test("should load response from JSON file", async () => {
+    const { writeFileSync, mkdirSync, rmSync } = await import("node:fs");
+    // eslint-disable-next-line unicorn/import-style
+    const pathModule = await import("node:path");
+    const path = pathModule.default;
+
+    const testDirectory = path.join(process.cwd(), "test-fixture-temp");
+    const jsonFile = path.join(testDirectory, "response.json");
+
+    mkdirSync(testDirectory, { recursive: true });
+    writeFileSync(
+      jsonFile,
+      JSON.stringify({ Body: "file content", ContentType: "application/json" }),
+    );
+
+    s3Mock.on(GetObjectCommand).resolvesFromFile(jsonFile);
+
+    const result = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(result.Body).toBe("file content");
+    expect(result.ContentType).toBe("application/json");
+
+    rmSync(testDirectory, { recursive: true, force: true });
+  });
+
+  test("should load response from text file", async () => {
+    const { writeFileSync, mkdirSync, rmSync } = await import("node:fs");
+    // eslint-disable-next-line unicorn/import-style
+    const pathModule = await import("node:path");
+    const path = pathModule.default;
+
+    const testDirectory = path.join(process.cwd(), "test-fixture-temp");
+    const textFile = path.join(testDirectory, "response.txt");
+
+    mkdirSync(testDirectory, { recursive: true });
+    writeFileSync(textFile, "plain text response");
+
+    s3Mock.on(GetObjectCommand).resolvesFromFile(textFile);
+
+    const result = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(result).toBe("plain text response");
+
+    rmSync(testDirectory, { recursive: true, force: true });
   });
 });

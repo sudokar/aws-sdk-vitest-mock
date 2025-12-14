@@ -12,6 +12,11 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      NX_CLOUD_ENABLED: "true"
+      NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+      NX_CLOUD_AUTH_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+      NX_CLOUD_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,7 +27,6 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: git config --global user.email "github-actions[bot]@users.noreply.github.com"
       - run: git config --global user.name "github-actions[bot]"
-      - run: bun run nx build
       - name: Evaluate release
         id: release_check
         env:
@@ -40,6 +44,7 @@ jobs:
         if: steps.release_check.outputs.release_required == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - run: bun run nx build
       - name: Publish to npm
         if: steps.release_check.outputs.release_required == 'true'
         run: |

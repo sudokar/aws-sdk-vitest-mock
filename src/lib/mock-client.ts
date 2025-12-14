@@ -1,24 +1,51 @@
-import { SmithyResolvedConfiguration } from '@smithy/smithy-client';
-import type { MiddlewareStack, Handler } from '@smithy/types';
-import { type Mock, vi } from 'vitest';
+import { SmithyResolvedConfiguration } from "@smithy/smithy-client";
+import type { MiddlewareStack, Handler } from "@smithy/types";
+import { type Mock, vi } from "vitest";
+import {
+  createNoSuchKeyError,
+  createNoSuchBucketError,
+  createAccessDeniedError,
+  createResourceNotFoundError,
+  createConditionalCheckFailedError,
+  createThrottlingError,
+  createInternalServerError,
+} from "./utils/aws-errors.js";
+import {
+  createDebugLogger,
+  enableDebug,
+  disableDebug,
+  type DebugLogger,
+} from "./utils/debug-logger.js";
+import { loadFixture } from "./utils/file-helpers.js";
+import {
+  createPaginatedResponses,
+  type PaginatorOptions,
+} from "./utils/paginator-helpers.js";
+import { createStream, type StreamInput } from "./utils/stream-helpers.js";
 
 // Define structural types to avoid strict dependency on specific @smithy/types versions
 export interface MetadataBearer {
   $metadata?: unknown;
 }
 
-export interface StructuralCommand<TInput extends object, TOutput extends MetadataBearer> {
+export interface StructuralCommand<
+  TInput extends object,
+  TOutput extends MetadataBearer,
+> {
   // Make input readonly to match SDK Command interface for better inference
   readonly input: TInput;
   middlewareStack: MiddlewareStack<TInput, TOutput>;
   resolveMiddleware(
     stack: MiddlewareStack<TInput, TOutput>,
     configuration: unknown,
-    options: unknown
+    options: unknown,
   ): Handler<TInput, TOutput>;
 }
 
-export type CommandConstructor<TInput extends object, TOutput extends MetadataBearer> = new (input: TInput) => StructuralCommand<TInput, TOutput>;
+export type CommandConstructor<
+  TInput extends object,
+  TOutput extends MetadataBearer,
+> = new (input: TInput) => StructuralCommand<TInput, TOutput>;
 
 export type AnyClient = {
   send(command: AnyCommand): Promise<MetadataBearer>;
@@ -28,12 +55,20 @@ export type AnyClient = {
 export type AnyCommand = StructuralCommand<object, MetadataBearer>;
 
 // Allow protected constructors by accepting prototype property directly if needed
-export type ClientConstructor<TClient extends AnyClient> = (abstract new (config: unknown) => TClient) | { prototype: TClient };
+export type ClientConstructor<TClient extends AnyClient> =
+  | (abstract new (config: unknown) => TClient)
+  | { prototype: TClient };
 
-type CommandHandler<TInput extends object = object, TOutput extends MetadataBearer = MetadataBearer, TClient extends AnyClient = AnyClient> =
-  (input: TInput, getClient: () => TClient | undefined) => Promise<TOutput>;
+type CommandHandler<
+  TInput extends object = object,
+  TOutput extends MetadataBearer = MetadataBearer,
+  TClient extends AnyClient = AnyClient,
+> = (input: TInput, getClient: () => TClient | undefined) => Promise<TOutput>;
 
-interface MockEntry<TInput extends object = object, TOutput extends MetadataBearer = MetadataBearer> {
+interface MockEntry<
+  TInput extends object = object,
+  TOutput extends MetadataBearer = MetadataBearer,
+> {
   matcher?: Partial<TInput>;
   handler: CommandHandler<TInput, TOutput>;
   once: boolean;
@@ -44,25 +79,43 @@ interface MockOptions {
   strict?: boolean;
 }
 
-function matchesPartial<T extends object>(input: T, matcher: Partial<T>): boolean {
+function matchesPartial<T extends object>(
+  input: T,
+  matcher: Partial<T>,
+): boolean {
   return Object.keys(matcher).every((key) => {
     const matcherValue = matcher[key as keyof T];
     const inputValue = input[key as keyof T];
 
-    if (matcherValue && typeof matcherValue === 'object' && !Array.isArray(matcherValue)) {
-      if (typeof inputValue !== 'object' || inputValue === null) {
+    if (
+      matcherValue &&
+      typeof matcherValue === "object" &&
+      !Array.isArray(matcherValue)
+    ) {
+      if (typeof inputValue !== "object" || inputValue === null) {
         return false;
       }
-      return matchesPartial(inputValue as object, matcherValue as Partial<object>);
+      return matchesPartial(
+        inputValue as object,
+        matcherValue as Partial<object>,
+      );
     }
 
     return inputValue === matcherValue;
   });
 }
 
-function matchesStrict<T extends object>(input: T, matcher: Partial<T>): boolean {
+function matchesStrict<T extends object>(
+  input: T,
+  matcher: Partial<T>,
+): boolean {
   if (input === (matcher as unknown as T)) return true;
-  if (typeof input !== 'object' || input === null || typeof matcher !== 'object' || matcher === null) {
+  if (
+    typeof input !== "object" ||
+    input === null ||
+    typeof matcher !== "object" ||
+    matcher === null
+  ) {
     return input === (matcher as unknown as T);
   }
 
@@ -73,12 +126,19 @@ function matchesStrict<T extends object>(input: T, matcher: Partial<T>): boolean
 
   return matcherKeys.every((key) => {
     if (!Object.prototype.hasOwnProperty.call(input, key)) return false;
-    // eslint-disable-next-line security/detect-object-injection
-    const inputValue = (input as Record<string, unknown>)[key];
-    // eslint-disable-next-line security/detect-object-injection
-    const matcherValue = (matcher as Record<string, unknown>)[key];
+    const inputRecord = input as Record<string, unknown>;
+    const matcherRecord = matcher as Record<string, unknown>;
+    // eslint-disable-next-line security/detect-object-injection -- Dynamic property access required for command input matching
+    const inputValue = inputRecord[key];
+    // eslint-disable-next-line security/detect-object-injection -- Dynamic property access required for matcher comparison
+    const matcherValue = matcherRecord[key];
 
-    if (typeof inputValue === 'object' && inputValue !== null && typeof matcherValue === 'object' && matcherValue !== null) {
+    if (
+      typeof inputValue === "object" &&
+      inputValue !== null &&
+      typeof matcherValue === "object" &&
+      matcherValue !== null
+    ) {
       return matchesStrict(inputValue, matcherValue);
     }
 
@@ -91,76 +151,194 @@ export interface AwsClientStub<TClient extends AnyClient = AnyClient> {
   on: <TInput extends object, TOutput extends MetadataBearer>(
     command: CommandConstructor<TInput, TOutput>,
     request?: Partial<TInput>,
-    options?: MockOptions
+    options?: MockOptions,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
   reset: () => void;
   restore: () => void;
-  calls: () => ReturnType<Mock['mock']['calls']['slice']>;
+  calls: () => ReturnType<Mock["mock"]["calls"]["slice"]>;
+  enableDebug: () => void;
+  disableDebug: () => void;
 }
 
-export interface AwsCommandStub<TInput extends object, TOutput extends MetadataBearer, TClient extends AnyClient = AnyClient> {
+export interface AwsCommandStub<
+  TInput extends object,
+  TOutput extends MetadataBearer,
+  TClient extends AnyClient = AnyClient,
+> {
   /** Set a permanent mock response (used after all once handlers are consumed) */
-  resolves: (output: Partial<TOutput>) => AwsCommandStub<TInput, TOutput, TClient>;
+  resolves: (
+    output: Partial<TOutput>,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
   /** Set a permanent mock rejection (used after all once handlers are consumed) */
   rejects: (error: Error | string) => AwsCommandStub<TInput, TOutput, TClient>;
   /** Set a permanent custom handler (used after all once handlers are consumed) */
-  callsFake: (fn: CommandHandler<TInput, TOutput, TClient>) => AwsCommandStub<TInput, TOutput, TClient>;
+  callsFake: (
+    fn: CommandHandler<TInput, TOutput, TClient>,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
   /** Add a one-time mock response (consumed in order) */
-  resolvesOnce: (output: Partial<TOutput>) => AwsCommandStub<TInput, TOutput, TClient>;
+  resolvesOnce: (
+    output: Partial<TOutput>,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
   /** Add a one-time mock rejection (consumed in order) */
-  rejectsOnce: (error: Error | string) => AwsCommandStub<TInput, TOutput, TClient>;
+  rejectsOnce: (
+    error: Error | string,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
   /** Add a one-time custom handler (consumed in order) */
-  callsFakeOnce: (fn: CommandHandler<TInput, TOutput, TClient>) => AwsCommandStub<TInput, TOutput, TClient>;
+  callsFakeOnce: (
+    fn: CommandHandler<TInput, TOutput, TClient>,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Set a permanent stream response for S3-like operations */
+  resolvesStream: (
+    data: StreamInput,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Set a one-time stream response for S3-like operations */
+  resolvesStreamOnce: (
+    data: StreamInput,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Set a permanent mock response with delay */
+  resolvesWithDelay: (
+    output: Partial<TOutput>,
+    delayMs: number,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Set a permanent mock rejection with delay */
+  rejectsWithDelay: (
+    error: Error | string,
+    delayMs: number,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Reject with S3 NoSuchKey error */
+  rejectsWithNoSuchKey: (
+    key?: string,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Reject with S3 NoSuchBucket error */
+  rejectsWithNoSuchBucket: (
+    bucket?: string,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Reject with AccessDenied error */
+  rejectsWithAccessDenied: (
+    resource?: string,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Reject with DynamoDB ResourceNotFound error */
+  rejectsWithResourceNotFound: (
+    resource?: string,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Reject with DynamoDB ConditionalCheckFailed error */
+  rejectsWithConditionalCheckFailed: () => AwsCommandStub<
+    TInput,
+    TOutput,
+    TClient
+  >;
+  /** Reject with Throttling error */
+  rejectsWithThrottling: () => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Reject with InternalServerError */
+  rejectsWithInternalServerError: () => AwsCommandStub<
+    TInput,
+    TOutput,
+    TClient
+  >;
+  /** Set paginated responses for AWS pagination */
+  resolvesPaginated: <T = unknown>(
+    items: T[],
+    options?: PaginatorOptions,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Load response from file (JSON files are parsed, others returned as strings) */
+  resolvesFromFile: (
+    filePath: string,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
 }
 
 type MocksContainer = {
   map: WeakMap<CommandConstructor<object, MetadataBearer>, MockEntry[]>;
+  debugLogger: DebugLogger;
 };
 
 function createMockImplementation(
-  container: MocksContainer
+  container: MocksContainer,
 ): (this: AnyClient, command: AnyCommand) => Promise<MetadataBearer> {
-  return async function (this: AnyClient, command: AnyCommand): Promise<MetadataBearer> {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const client = this;
-    const getClient = () => client;
-    const mocks = container.map.get(command.constructor as CommandConstructor<object, MetadataBearer>);
+  return async function (
+    this: AnyClient,
+    command: AnyCommand,
+  ): Promise<MetadataBearer> {
+    const getClient = (): AnyClient => this;
+
+    container.debugLogger.log(
+      `Received command: ${command.constructor.name}`,
+      command.input,
+    );
+
+    const mocks = container.map.get(
+      command.constructor as CommandConstructor<object, MetadataBearer>,
+    );
     if (mocks) {
-      const matchingIndex = mocks.findIndex(mock => {
+      container.debugLogger.log(
+        `Found ${mocks.length} mock(s) for ${command.constructor.name}`,
+      );
+
+      const matchingIndex = mocks.findIndex((mock) => {
         const isMatch = mock.strict
           ? mock.matcher && matchesStrict(command.input, mock.matcher)
           : !mock.matcher || matchesPartial(command.input, mock.matcher);
         return isMatch;
       });
 
-      if (matchingIndex !== -1) {
-        // eslint-disable-next-line security/detect-object-injection
+      if (matchingIndex === -1) {
+        container.debugLogger.log(
+          `No matching mock found for ${command.constructor.name}`,
+          command.input,
+        );
+      } else {
+        // eslint-disable-next-line security/detect-object-injection -- Array access with validated index for mock retrieval
         const mock = mocks[matchingIndex];
+        if (!mock) {
+          throw new Error(`Mock at index ${matchingIndex} not found`);
+        }
+        container.debugLogger.log(
+          `Using mock at index ${matchingIndex} for ${command.constructor.name}`,
+        );
+
         if (mock.once) {
           mocks.splice(matchingIndex, 1);
+          container.debugLogger.log(
+            `Removed one-time mock for ${command.constructor.name}`,
+          );
         }
         return mock.handler(command.input, getClient);
       }
+    } else {
+      container.debugLogger.log(
+        `No mocks configured for ${command.constructor.name}`,
+      );
     }
 
-    throw new Error(`No mock configured for command: ${command.constructor.name}`);
+    throw new Error(
+      `No mock configured for command: ${command.constructor.name}`,
+    );
   };
 }
 
-function createCommandStub<TInput extends object, TOutput extends MetadataBearer, TClient extends AnyClient>(
+function createCommandStub<
+  TInput extends object,
+  TOutput extends MetadataBearer,
+  TClient extends AnyClient,
+>(
   container: MocksContainer,
   command: CommandConstructor<TInput, TOutput>,
   matcher: Partial<TInput> | undefined,
-  options: MockOptions = {}
+  options: MockOptions = {},
 ): AwsCommandStub<TInput, TOutput, TClient> {
-  const addEntry = (handler: CommandHandler<TInput, TOutput, TClient>, once: boolean): void => {
+  const addEntry = (
+    handler: CommandHandler<TInput, TOutput, TClient>,
+    once: boolean,
+  ): void => {
     const entry: MockEntry<TInput, TOutput> = {
       matcher,
       handler: handler as CommandHandler<TInput, TOutput>,
       once,
-      strict: !!options.strict
+      strict: !!options.strict,
     };
-    const existingMocks = container.map.get(command as unknown as CommandConstructor<object, MetadataBearer>) ?? [];
+    const existingMocks =
+      container.map.get(
+        command as unknown as CommandConstructor<object, MetadataBearer>,
+      ) ?? [];
 
     if (once) {
       // Insert "once" handlers before permanent handlers
@@ -170,46 +348,202 @@ function createCommandStub<TInput extends object, TOutput extends MetadataBearer
       } else {
         existingMocks.splice(permanentIndex, 0, entry as unknown as MockEntry);
       }
-      container.map.set(command as unknown as CommandConstructor<object, MetadataBearer>, existingMocks);
+      container.map.set(
+        command as unknown as CommandConstructor<object, MetadataBearer>,
+        existingMocks,
+      );
     } else {
       // Permanent handlers replace any existing permanent handler for same matcher
       const filteredMocks = existingMocks.filter(
-        (m) => m.once || JSON.stringify(m.matcher) !== JSON.stringify(matcher)
+        (m) => m.once || JSON.stringify(m.matcher) !== JSON.stringify(matcher),
       );
       filteredMocks.push(entry as unknown as MockEntry);
-      container.map.set(command as unknown as CommandConstructor<object, MetadataBearer>, filteredMocks);
+      container.map.set(
+        command as unknown as CommandConstructor<object, MetadataBearer>,
+        filteredMocks,
+      );
     }
   };
 
   const stub: AwsCommandStub<TInput, TOutput, TClient> = {
-    resolves(output: Partial<TOutput>): AwsCommandStub<TInput, TOutput, TClient> {
+    resolves(
+      output: Partial<TOutput>,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
       addEntry(() => Promise.resolve(output as TOutput), false);
       return stub;
     },
     rejects(error: Error | string): AwsCommandStub<TInput, TOutput, TClient> {
       addEntry(() => {
-        const err = typeof error === 'string' ? new Error(error) : error;
+        const err = typeof error === "string" ? new Error(error) : error;
         return Promise.reject(err);
       }, false);
       return stub;
     },
-    callsFake(fn: CommandHandler<TInput, TOutput, TClient>): AwsCommandStub<TInput, TOutput, TClient> {
+    callsFake(
+      fn: CommandHandler<TInput, TOutput, TClient>,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
       addEntry(fn, false);
       return stub;
     },
-    resolvesOnce(output: Partial<TOutput>): AwsCommandStub<TInput, TOutput, TClient> {
+    resolvesOnce(
+      output: Partial<TOutput>,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
       addEntry(() => Promise.resolve(output as TOutput), true);
       return stub;
     },
-    rejectsOnce(error: Error | string): AwsCommandStub<TInput, TOutput, TClient> {
+    rejectsOnce(
+      error: Error | string,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
       addEntry(() => {
-        const err = typeof error === 'string' ? new Error(error) : error;
+        const err = typeof error === "string" ? new Error(error) : error;
         return Promise.reject(err);
       }, true);
       return stub;
     },
-    callsFakeOnce(fn: CommandHandler<TInput, TOutput, TClient>): AwsCommandStub<TInput, TOutput, TClient> {
+    callsFakeOnce(
+      fn: CommandHandler<TInput, TOutput, TClient>,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
       addEntry(fn, true);
+      return stub;
+    },
+    resolvesStream(
+      data: StreamInput,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(
+        () =>
+          Promise.resolve({ Body: createStream(data) } as unknown as TOutput),
+        false,
+      );
+      return stub;
+    },
+    resolvesStreamOnce(
+      data: StreamInput,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(
+        () =>
+          Promise.resolve({ Body: createStream(data) } as unknown as TOutput),
+        true,
+      );
+      return stub;
+    },
+    resolvesWithDelay(
+      output: Partial<TOutput>,
+      delayMs: number,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      const delayedResolve = (resolve: (value: TOutput) => void) => {
+        setTimeout(() => resolve(output as TOutput), delayMs);
+      };
+      addEntry(() => new Promise(delayedResolve), false);
+      return stub;
+    },
+    rejectsWithDelay(
+      error: Error | string,
+      delayMs: number,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      const err = typeof error === "string" ? new Error(error) : error;
+      const delayedReject = (_: unknown, reject: (reason: Error) => void) => {
+        setTimeout(() => reject(err), delayMs);
+      };
+      addEntry(() => new Promise(delayedReject), false);
+      return stub;
+    },
+    rejectsWithNoSuchKey(
+      key?: string,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(() => Promise.reject(createNoSuchKeyError(key)), false);
+      return stub;
+    },
+    rejectsWithNoSuchBucket(
+      bucket?: string,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(() => Promise.reject(createNoSuchBucketError(bucket)), false);
+      return stub;
+    },
+    rejectsWithAccessDenied(
+      resource?: string,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(() => Promise.reject(createAccessDeniedError(resource)), false);
+      return stub;
+    },
+    rejectsWithResourceNotFound(
+      resource?: string,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(
+        () => Promise.reject(createResourceNotFoundError(resource)),
+        false,
+      );
+      return stub;
+    },
+    rejectsWithConditionalCheckFailed(): AwsCommandStub<
+      TInput,
+      TOutput,
+      TClient
+    > {
+      addEntry(
+        () => Promise.reject(createConditionalCheckFailedError()),
+        false,
+      );
+      return stub;
+    },
+    rejectsWithThrottling(): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(() => Promise.reject(createThrottlingError()), false);
+      return stub;
+    },
+    rejectsWithInternalServerError(): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(() => Promise.reject(createInternalServerError()), false);
+      return stub;
+    },
+    resolvesPaginated<T = unknown>(
+      items: T[],
+      options: PaginatorOptions = {},
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      const responses = createPaginatedResponses(items, options);
+      let currentIndex = 0;
+
+      addEntry((input) => {
+        const tokenKey = options.tokenKey || "NextToken";
+        const inputRecord = input as Record<string, unknown>;
+        // eslint-disable-next-line security/detect-object-injection -- Dynamic token key access required for AWS pagination handling
+        const inputToken = inputRecord[tokenKey] as string | undefined;
+
+        if (inputToken) {
+          // Extract index from token
+          const tokenRegex = /token-(\d+)/;
+          const tokenMatch = tokenRegex.exec(inputToken);
+          if (tokenMatch && tokenMatch[1]) {
+            const tokenValue = tokenMatch[1];
+            currentIndex = Math.floor(
+              Number.parseInt(tokenValue, 10) / (options.pageSize || 10),
+            );
+          }
+        } else {
+          currentIndex = 0;
+        }
+
+        const response =
+          // eslint-disable-next-line security/detect-object-injection
+          responses[currentIndex] ||
+          // eslint-disable-next-line unicorn/prefer-at -- TypeScript target doesn't support Array.at() method
+          responses[responses.length - 1] ||
+          responses[0];
+        if (!response) {
+          throw new Error("No paginated responses available");
+        }
+        currentIndex = Math.min(currentIndex + 1, responses.length - 1);
+
+        return Promise.resolve(response as unknown as TOutput);
+      }, false);
+
+      return stub;
+    },
+    resolvesFromFile(
+      filePath: string,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(() => {
+        const data = loadFixture(filePath);
+        return Promise.resolve(data as TOutput);
+      }, false);
+
       return stub;
     },
   };
@@ -218,29 +552,30 @@ function createCommandStub<TInput extends object, TOutput extends MetadataBearer
 }
 
 export const mockClient = <TClient extends AnyClient>(
-  clientConstructor: ClientConstructor<TClient>
+  clientConstructor: ClientConstructor<TClient>,
 ): AwsClientStub<TClient> => {
   const mocksContainer: MocksContainer = {
-    map: new WeakMap()
+    map: new WeakMap(),
+    debugLogger: createDebugLogger(),
   };
 
   // Use type assertion to handle both constructor and prototype-only objects
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const prototype = 'prototype' in clientConstructor
-    ? clientConstructor.prototype
-    : (clientConstructor as unknown as { prototype: TClient }).prototype;
+  const prototype = (clientConstructor as { prototype: TClient }).prototype;
 
   const sendSpy = vi
-    .spyOn(prototype, 'send')
-    .mockImplementation(createMockImplementation(mocksContainer));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Required for Vitest spyOn type compatibility
+    .spyOn(prototype as any, "send")
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- Required for Vitest mockImplementation type compatibility
+    .mockImplementation(createMockImplementation(mocksContainer) as any);
 
   const stub: AwsClientStub<TClient> = {
     client: undefined,
     on: <TInput extends object, TOutput extends MetadataBearer>(
       command: CommandConstructor<TInput, TOutput>,
       request?: Partial<TInput>,
-      options?: MockOptions
-    ): AwsCommandStub<TInput, TOutput, TClient> => createCommandStub(mocksContainer, command, request, options),
+      options?: MockOptions,
+    ): AwsCommandStub<TInput, TOutput, TClient> =>
+      createCommandStub(mocksContainer, command, request, options),
     reset: (): void => {
       sendSpy.mockClear();
       mocksContainer.map = new WeakMap();
@@ -249,21 +584,29 @@ export const mockClient = <TClient extends AnyClient>(
       sendSpy.mockRestore();
       mocksContainer.map = new WeakMap();
     },
-    calls: (): Mock['mock']['calls'] => sendSpy.mock.calls,
+    calls: (): Mock["mock"]["calls"] => sendSpy.mock.calls,
+    enableDebug: (): void => {
+      enableDebug(mocksContainer.debugLogger);
+    },
+    disableDebug: (): void => {
+      disableDebug(mocksContainer.debugLogger);
+    },
   };
 
   return stub;
 };
 
 export const mockClientInstance = <TClient extends AnyClient>(
-  clientInstance: TClient
+  clientInstance: TClient,
 ): AwsClientStub<AnyClient> => {
   const mocksContainer: MocksContainer = {
-    map: new WeakMap()
+    map: new WeakMap(),
+    debugLogger: createDebugLogger(),
   };
 
   // Use type assertion to work around vi.spyOn strict typing
-  const sendSpy = vi.spyOn(clientInstance as unknown as AnyClient, 'send')
+  const sendSpy = vi
+    .spyOn(clientInstance as unknown as AnyClient, "send")
     .mockImplementation(createMockImplementation(mocksContainer));
 
   const stub: AwsClientStub<AnyClient> = {
@@ -271,8 +614,9 @@ export const mockClientInstance = <TClient extends AnyClient>(
     on: <TInput extends object, TOutput extends MetadataBearer>(
       command: CommandConstructor<TInput, TOutput>,
       request?: Partial<TInput>,
-      options?: MockOptions
-    ): AwsCommandStub<TInput, TOutput, AnyClient> => createCommandStub(mocksContainer, command, request, options),
+      options?: MockOptions,
+    ): AwsCommandStub<TInput, TOutput, AnyClient> =>
+      createCommandStub(mocksContainer, command, request, options),
     reset: (): void => {
       sendSpy.mockClear();
       mocksContainer.map = new WeakMap();
@@ -281,7 +625,13 @@ export const mockClientInstance = <TClient extends AnyClient>(
       sendSpy.mockRestore();
       mocksContainer.map = new WeakMap();
     },
-    calls: (): Mock['mock']['calls'] => sendSpy.mock.calls,
+    calls: (): Mock["mock"]["calls"] => sendSpy.mock.calls,
+    enableDebug: (): void => {
+      enableDebug(mocksContainer.debugLogger);
+    },
+    disableDebug: (): void => {
+      disableDebug(mocksContainer.debugLogger);
+    },
   };
 
   return stub;
