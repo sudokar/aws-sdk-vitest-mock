@@ -410,7 +410,8 @@ function createCommandStub<
       data: StreamInput,
     ): AwsCommandStub<TInput, TOutput, TClient> {
       addEntry(
-        () => Promise.resolve({ Body: createStream(data) } as TOutput),
+        () =>
+          Promise.resolve({ Body: createStream(data) } as unknown as TOutput),
         false,
       );
       return stub;
@@ -419,7 +420,8 @@ function createCommandStub<
       data: StreamInput,
     ): AwsCommandStub<TInput, TOutput, TClient> {
       addEntry(
-        () => Promise.resolve({ Body: createStream(data) } as TOutput),
+        () =>
+          Promise.resolve({ Body: createStream(data) } as unknown as TOutput),
         true,
       );
       return stub;
@@ -518,16 +520,18 @@ function createCommandStub<
           currentIndex = 0;
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Array access with calculated index for pagination response retrieval
         const response =
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, security/detect-object-injection
-          responses[currentIndex] || responses.at(-1) || responses[0];
+          // eslint-disable-next-line security/detect-object-injection
+          responses[currentIndex] ||
+          // eslint-disable-next-line unicorn/prefer-at -- TypeScript target doesn't support Array.at() method
+          responses[responses.length - 1] ||
+          responses[0];
         if (!response) {
           throw new Error("No paginated responses available");
         }
         currentIndex = Math.min(currentIndex + 1, responses.length - 1);
 
-        return Promise.resolve(response as TOutput);
+        return Promise.resolve(response as unknown as TOutput);
       }, false);
 
       return stub;
@@ -559,8 +563,10 @@ export const mockClient = <TClient extends AnyClient>(
   const prototype = (clientConstructor as { prototype: TClient }).prototype;
 
   const sendSpy = vi
-    .spyOn(prototype, "send")
-    .mockImplementation(createMockImplementation(mocksContainer));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Required for Vitest spyOn type compatibility
+    .spyOn(prototype as any, "send")
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- Required for Vitest mockImplementation type compatibility
+    .mockImplementation(createMockImplementation(mocksContainer) as any);
 
   const stub: AwsClientStub<TClient> = {
     client: undefined,
