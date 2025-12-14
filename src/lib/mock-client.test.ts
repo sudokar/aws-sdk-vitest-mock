@@ -1230,3 +1230,73 @@ describe("Debug Mode", () => {
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 });
+
+describe("Fixture Loading", () => {
+  let s3Mock: ReturnType<typeof mockClient>;
+  let s3Client: S3Client;
+
+  beforeEach(() => {
+    s3Mock = mockClient(S3Client);
+    s3Client = new S3Client({});
+  });
+
+  afterEach(() => {
+    s3Mock.restore();
+  });
+
+  test("should load response from JSON file", async () => {
+    const { writeFileSync, mkdirSync, rmSync } = await import("node:fs");
+    // eslint-disable-next-line unicorn/import-style
+    const pathModule = await import("node:path");
+    const path = pathModule.default;
+
+    const testDirectory = path.join(process.cwd(), "test-fixture-temp");
+    const jsonFile = path.join(testDirectory, "response.json");
+
+    mkdirSync(testDirectory, { recursive: true });
+    writeFileSync(
+      jsonFile,
+      JSON.stringify({ Body: "file content", ContentType: "application/json" }),
+    );
+
+    s3Mock.on(GetObjectCommand).resolvesFromFile(jsonFile);
+
+    const result = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(result.Body).toBe("file content");
+    expect(result.ContentType).toBe("application/json");
+
+    rmSync(testDirectory, { recursive: true, force: true });
+  });
+
+  test("should load response from text file", async () => {
+    const { writeFileSync, mkdirSync, rmSync } = await import("node:fs");
+    // eslint-disable-next-line unicorn/import-style
+    const pathModule = await import("node:path");
+    const path = pathModule.default;
+
+    const testDirectory = path.join(process.cwd(), "test-fixture-temp");
+    const textFile = path.join(testDirectory, "response.txt");
+
+    mkdirSync(testDirectory, { recursive: true });
+    writeFileSync(textFile, "plain text response");
+
+    s3Mock.on(GetObjectCommand).resolvesFromFile(textFile);
+
+    const result = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+
+    expect(result).toBe("plain text response");
+
+    rmSync(testDirectory, { recursive: true, force: true });
+  });
+});

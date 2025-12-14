@@ -16,6 +16,7 @@ import {
   disableDebug,
   type DebugLogger,
 } from "./utils/debug-logger.js";
+import { loadFixture } from "./utils/file-helpers.js";
 import {
   createPaginatedResponses,
   type PaginatorOptions,
@@ -236,6 +237,10 @@ export interface AwsCommandStub<
   resolvesPaginated: <T = unknown>(
     items: T[],
     options?: PaginatorOptions,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  /** Load response from file (JSON files are parsed, others returned as strings) */
+  resolvesFromFile: (
+    filePath: string,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
 }
 
@@ -520,6 +525,16 @@ function createCommandStub<
         currentIndex = Math.min(currentIndex + 1, responses.length - 1);
 
         return Promise.resolve(response as TOutput);
+      }, false);
+
+      return stub;
+    },
+    resolvesFromFile(
+      filePath: string,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(() => {
+        const data = loadFixture(filePath);
+        return Promise.resolve(data as TOutput);
       }, false);
 
       return stub;

@@ -99,6 +99,21 @@ s3Mock
 // All other calls return 'subsequent calls'
 ```
 
+### Fixture Loading
+
+Load mock responses from files for easier test data management:
+
+```typescript
+// Load JSON response from file
+s3Mock.on(GetObjectCommand).resolvesFromFile("./fixtures/s3-response.json");
+
+// Load text response from file
+s3Mock.on(GetObjectCommand).resolvesFromFile("./fixtures/response.txt");
+
+// JSON files are automatically parsed, text files returned as strings
+// File paths are resolved relative to current working directory
+```
+
 ### Paginator Support
 
 Mock AWS SDK v3 pagination with automatic token handling:
@@ -351,6 +366,7 @@ Mocks an existing AWS SDK client instance.
 - `resolvesWithDelay(output, delayMs)` - Return response with delay
 - `rejectsWithDelay(error, delayMs)` - Return error with delay
 - `resolvesPaginated(items, options?)` - Return paginated responses with automatic token handling
+- `resolvesFromFile(filePath)` - Load response from file (JSON files are parsed, others returned as strings)
 - `rejectsWithNoSuchKey(key?)` - Reject with S3 NoSuchKey error
 - `rejectsWithNoSuchBucket(bucket?)` - Reject with S3 NoSuchBucket error
 - `rejectsWithAccessDenied(resource?)` - Reject with AccessDenied error
