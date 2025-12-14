@@ -55,7 +55,7 @@ test("toHaveReceivedCommand", async () => {
   );
   expect(result.pass).toBe(true);
   expect(result.message()).toBe(
-    "Expected AWS SDK mock not to have received command GetCommand",
+    "Expected AWS SDK mock not to have received command \u001B[31mGetCommand\u001B[39m",
   );
 });
 
@@ -97,7 +97,13 @@ test("toHaveReceivedCommandWith", async () => {
   );
   expect(result.pass).toBe(true);
   expect(result.message()).toBe(
-    'Expected AWS SDK mock not to have received command GetCommand with {"TableName":"test","Key":{"id":"1"}}',
+    `Expected AWS SDK mock not to have received command \u001B[31mGetCommand\u001B[39m with input:
+\u001B[36m{
+  "TableName": "test",
+  "Key": {
+    "id": "1"
+  }
+}\u001B[39m`,
   );
 });
 
@@ -125,7 +131,13 @@ test("toHaveReceivedNthCommandWith", async () => {
   );
   expect(result.pass).toBe(true);
   expect(result.message()).toBe(
-    'Expected AWS SDK mock not to have received nth (2) command GetCommand with {"TableName":"test","Key":{"id":"2"}}',
+    `Expected AWS SDK mock not to have received nth (\u001B[35m2\u001B[39m) command \u001B[31mGetCommand\u001B[39m with input:
+\u001B[36m{
+  "TableName": "test",
+  "Key": {
+    "id": "2"
+  }
+}\u001B[39m`,
   );
 });
 
@@ -136,7 +148,7 @@ test("toHaveReceivedCommand returns expected message when command not received",
   );
   expect(result.pass).toBe(false);
   expect(result.message()).toBe(
-    "Expected AWS SDK mock to have received command GetCommand",
+    "Expected AWS SDK mock to have received command \u001B[31mGetCommand\u001B[39m, but \u001B[90mno commands were received\u001B[39m",
   );
 });
 
@@ -172,7 +184,21 @@ test("toHaveReceivedCommandWith returns expected message when input differs", as
   );
   expect(result.pass).toBe(false);
   expect(result.message()).toBe(
-    'Expected AWS SDK mock to have received command GetCommand with {"TableName":"test","Key":{"id":"2"}}',
+    `Expected AWS SDK mock to have received command \u001B[31mGetCommand\u001B[39m with input:
+\u001B[36m{
+  "TableName": "test",
+  "Key": {
+    "id": "2"
+  }
+}\u001B[39m
+
+\u001B[90mBut received\u001B[39m \u001B[33mGetCommand\u001B[39m \u001B[90mwith\u001B[39m:
+\u001B[33m{
+  "TableName": "test",
+  "Key": {
+    "id": "1"
+  }
+}\u001B[39m`,
   );
 });
 
@@ -196,7 +222,21 @@ test("toHaveReceivedNthCommandWith returns expected message when nth input diffe
   );
   expect(result.pass).toBe(false);
   expect(result.message()).toBe(
-    'Expected AWS SDK mock nth (2) command GetCommand with {"TableName":"test","Key":{"id":"3"}}, but received {"TableName":"test","Key":{"id":"2"}}.',
+    `Expected AWS SDK mock nth (\u001B[35m2\u001B[39m) command \u001B[31mGetCommand\u001B[39m with input:
+\u001B[36m{
+  "TableName": "test",
+  "Key": {
+    "id": "3"
+  }
+}\u001B[39m
+
+\u001B[90mBut received\u001B[39m:
+\u001B[33m{
+  "TableName": "test",
+  "Key": {
+    "id": "2"
+  }
+}\u001B[39m`,
   );
 });
 
@@ -219,7 +259,7 @@ test("toHaveReceivedNthCommandWith returns expected message when nth command mis
   );
   expect(result.pass).toBe(false);
   expect(result.message()).toBe(
-    "Expected AWS SDK mock to have received at least 2 call(s), but received 1.",
+    "Expected AWS SDK mock to have received at least \u001B[35m2\u001B[39m call(s), but \u001B[90monly received 1 call(s)\u001B[39m",
   );
 });
 
@@ -264,7 +304,7 @@ test("toHaveReceivedNoOtherCommands should fail when unexpected commands receive
 
   expect(result.pass).toBe(false);
   expect(result.message()).toBe(
-    "Expected AWS SDK mock to have received no other commands, but received: PutItemCommand",
+    "Expected AWS SDK mock to have received \u001B[90mno other commands\u001B[39m, but received: \u001B[31mPutItemCommand\u001B[39m",
   );
   mock.restore();
 });

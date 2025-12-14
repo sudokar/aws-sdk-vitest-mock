@@ -933,7 +933,7 @@ describe("Strict Command Verification", () => {
     expect(() => {
       expect(s3Mock).toHaveReceivedNoOtherCommands([GetObjectCommand]);
     }).toThrow(
-      "Expected AWS SDK mock to have received no other commands, but received: PutObjectCommand",
+      "Expected AWS SDK mock to have received \u001B[90mno other commands\u001B[39m, but received: \u001B[31mPutObjectCommand\u001B[39m",
     );
   });
 

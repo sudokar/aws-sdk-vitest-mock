@@ -1,4 +1,5 @@
 import type { AwsClientStub } from "./mock-client.js";
+import { colors } from "./utils/colors.js";
 
 type CommandConstructor = new (...args: unknown[]) => unknown;
 
@@ -36,10 +37,22 @@ export const matchers = {
 
     return {
       pass,
-      message: (): string =>
-        pass
-          ? `Expected AWS SDK mock not to have received command ${commandName}`
-          : `Expected AWS SDK mock to have received command ${commandName}`,
+      message: (): string => {
+        if (pass) {
+          return `Expected AWS SDK mock not to have received command ${colors.red(commandName)}`;
+        }
+
+        const receivedCommands = calls.map((call) => {
+          const cmd = call[0] as { constructor?: { name?: string } };
+          return cmd.constructor?.name ?? "Unknown";
+        });
+
+        if (receivedCommands.length === 0) {
+          return `Expected AWS SDK mock to have received command ${colors.red(commandName)}, but ${colors.gray("no commands were received")}`;
+        }
+
+        return `Expected AWS SDK mock to have received command ${colors.red(commandName)}, but received: ${colors.yellow(receivedCommands.join(", "))}`;
+      },
     };
   },
 
@@ -79,10 +92,39 @@ export const matchers = {
 
     return {
       pass,
-      message: (): string =>
-        pass
-          ? `Expected AWS SDK mock not to have received command ${commandName} with ${JSON.stringify(input)}`
-          : `Expected AWS SDK mock to have received command ${commandName} with ${JSON.stringify(input)}`,
+      message: (): string => {
+        if (pass) {
+          const commandName_colored = colors.red(commandName);
+          const input_colored = colors.cyan(
+            JSON.stringify(input, undefined, 2),
+          );
+          return `Expected AWS SDK mock not to have received command ${commandName_colored} with input:\n${input_colored}`;
+        }
+
+        if (calls.length === 0) {
+          const commandName_colored = colors.red(commandName);
+          const input_colored = colors.cyan(
+            JSON.stringify(input, undefined, 2),
+          );
+          const neverCalled = colors.gray(`${commandName} was never called`);
+          return `Expected AWS SDK mock to have received command ${commandName_colored} with input:\n${input_colored}\n\nBut ${neverCalled}`;
+        }
+
+        const actualInputs = calls.map(
+          (call) => (call[0] as CommandLike).input,
+        );
+        const commandName_colored = colors.red(commandName);
+        const input_colored = colors.cyan(JSON.stringify(input, undefined, 2));
+        const butReceived = colors.gray("But received");
+        const commandName_yellow = colors.yellow(commandName);
+        const withText = colors.gray("with");
+        const actualInputs_colored = colors.yellow(
+          actualInputs
+            .map((inp) => JSON.stringify(inp, undefined, 2))
+            .join("\n\n"),
+        );
+        return `Expected AWS SDK mock to have received command ${commandName_colored} with input:\n${input_colored}\n\n${butReceived} ${commandName_yellow} ${withText}:\n${actualInputs_colored}`;
+      },
     };
   },
 
@@ -107,21 +149,38 @@ export const matchers = {
       pass,
       message: (): string => {
         if (pass) {
-          return `Expected AWS SDK mock not to have received nth (${n}) command ${commandName} with ${JSON.stringify(input)}`;
+          const nColored = colors.magenta(n.toString());
+          const commandNameColored = colors.red(commandName);
+          const inputColored = colors.cyan(JSON.stringify(input, undefined, 2));
+          return `Expected AWS SDK mock not to have received nth (${nColored}) command ${commandNameColored} with input:\n${inputColored}`;
         }
 
         if (!nthCall) {
-          return `Expected AWS SDK mock to have received at least ${n} call(s), but received ${calls.length}.`;
+          const nColored = colors.magenta(n.toString());
+          const onlyReceived = colors.gray(
+            `only received ${calls.length} call(s)`,
+          );
+          return `Expected AWS SDK mock to have received at least ${nColored} call(s), but ${onlyReceived}`;
         }
 
         if (!(actualCommand instanceof command)) {
           const actualName =
             (actualCommand as { constructor?: { name?: string } } | undefined)
               ?.constructor?.name ?? typeof actualCommand;
-          return `Expected AWS SDK mock nth (${n}) call to be ${commandName}, but received ${actualName}.`;
+          const nColored = colors.magenta(n.toString());
+          const commandNameColored = colors.red(commandName);
+          const actualNameColored = colors.yellow(actualName);
+          return `Expected AWS SDK mock nth (${nColored}) call to be ${commandNameColored}, but received ${actualNameColored}`;
         }
 
-        return `Expected AWS SDK mock nth (${n}) command ${commandName} with ${JSON.stringify(input)}, but received ${JSON.stringify(actualInput)}.`;
+        const nColored = colors.magenta(n.toString());
+        const commandNameColored = colors.red(commandName);
+        const inputColored = colors.cyan(JSON.stringify(input, undefined, 2));
+        const butReceived = colors.gray("But received");
+        const actualInputColored = colors.yellow(
+          JSON.stringify(actualInput, undefined, 2),
+        );
+        return `Expected AWS SDK mock nth (${nColored}) command ${commandNameColored} with input:\n${inputColored}\n\n${butReceived}:\n${actualInputColored}`;
       },
     };
   },
@@ -144,7 +203,7 @@ export const matchers = {
       pass,
       message: (): string => {
         if (pass) {
-          return `Expected AWS SDK mock to have received other commands besides ${expectedCommands.map((c) => c.name).join(", ")}`;
+          return `Expected AWS SDK mock to have received other commands besides ${colors.green(expectedCommands.map((c) => c.name).join(", "))}`;
         }
 
         const unexpectedCommandNames = unexpectedCalls.map((call) => {
@@ -152,7 +211,7 @@ export const matchers = {
           return command.constructor?.name ?? "Unknown";
         });
 
-        return `Expected AWS SDK mock to have received no other commands, but received: ${unexpectedCommandNames.join(", ")}`;
+        return `Expected AWS SDK mock to have received ${colors.gray("no other commands")}, but received: ${colors.red(unexpectedCommandNames.join(", "))}`;
       },
     };
   },
