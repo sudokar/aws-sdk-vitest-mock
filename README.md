@@ -44,31 +44,53 @@ pnpm add -D aws-sdk-vitest-mock
 ### Basic Usage
 
 ```typescript
+import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import { mockClient } from "aws-sdk-vitest-mock";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
-// Mock the S3 client
-const s3Mock = mockClient(S3Client);
+// Your application code
+class DocumentService {
+  constructor(private s3Client: S3Client) {}
 
-// Configure mock responses
-s3Mock.on(GetObjectCommand).resolves({
-  Body: "mock data",
-  ContentType: "text/plain",
+  async getDocument(bucket: string, key: string) {
+    const result = await this.s3Client.send(
+      new GetObjectCommand({ Bucket: bucket, Key: key }),
+    );
+    return result.Body;
+  }
+}
+
+describe("DocumentService", () => {
+  let s3Mock: ReturnType<typeof mockClient>;
+  let documentService: DocumentService;
+
+  beforeEach(() => {
+    // Mock the S3 client
+    s3Mock = mockClient(S3Client);
+
+    // Create service with real S3Client (which is now mocked)
+    const s3Client = new S3Client({ region: "us-east-1" });
+    documentService = new DocumentService(s3Client);
+  });
+
+  afterEach(() => {
+    s3Mock.restore();
+  });
+
+  test("should retrieve document from S3", async () => {
+    // Configure mock response
+    s3Mock.on(GetObjectCommand).resolves({
+      Body: "document content",
+      ContentType: "text/plain",
+    });
+
+    // Test your application code
+    const result = await documentService.getDocument("my-bucket", "doc.txt");
+
+    expect(result).toBe("document content");
+    expect(s3Mock).toHaveReceivedCommand(GetObjectCommand);
+  });
 });
-
-// Use in your tests
-const client = new S3Client({});
-const result = await client.send(
-  new GetObjectCommand({
-    Bucket: "my-bucket",
-    Key: "my-key",
-  }),
-);
-
-console.log(result.Body); // 'mock data'
-
-// Clean up
-s3Mock.restore();
 ```
 
 ### Request Matching
@@ -220,18 +242,32 @@ s3Mock.on(GetObjectCommand).callsFake(async (input, getClient) => {
 ### Mocking Existing Instances
 
 ```typescript
-const existingClient = new S3Client({ region: "us-east-1" });
-const mock = mockClientInstance(existingClient);
+// Your application service that uses an injected S3 client
+class FileUploadService {
+  constructor(private s3Client: S3Client) {}
 
-mock.on(GetObjectCommand).resolves({ Body: "mocked" });
+  async uploadFile(bucket: string, key: string, data: string) {
+    return await this.s3Client.send(
+      new PutObjectCommand({ Bucket: bucket, Key: key, Body: data }),
+    );
+  }
+}
 
-// The existing instance is now mocked
-const result = await existingClient.send(
-  new GetObjectCommand({
-    Bucket: "b",
-    Key: "k",
-  }),
-);
+test("should mock existing S3 client instance", async () => {
+  // Create the client your application will use
+  const s3Client = new S3Client({ region: "us-east-1" });
+  const service = new FileUploadService(s3Client);
+
+  // Mock the existing client instance
+  const mock = mockClientInstance(s3Client);
+  mock.on(PutObjectCommand).resolves({ ETag: "mock-etag" });
+
+  // Test your service
+  const result = await service.uploadFile("bucket", "key", "data");
+
+  expect(result.ETag).toBe("mock-etag");
+  expect(mock).toHaveReceivedCommand(PutObjectCommand);
+});
 ```
 
 ### Debug Mode
