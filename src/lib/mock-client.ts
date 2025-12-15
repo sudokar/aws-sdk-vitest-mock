@@ -172,7 +172,9 @@ export interface AwsClientStub<TClient extends AnyClient = AnyClient> {
   >;
   reset: () => void;
   restore: () => void;
-  calls: () => ReturnType<Mock["mock"]["calls"]["slice"]>;
+  calls: () => AnyCommand[];
+  /** @internal - For use by matchers only */
+  __rawCalls: () => ReturnType<Mock["mock"]["calls"]["slice"]>;
   enableDebug: () => void;
   disableDebug: () => void;
 }
@@ -613,7 +615,10 @@ export const mockClient = <TClient extends AnyClient>(
       sendSpy.mockRestore();
       mocksContainer.map = new WeakMap();
     },
-    calls: (): Mock["mock"]["calls"] => sendSpy.mock.calls,
+    calls: (): AnyCommand[] =>
+      sendSpy.mock.calls.map((call) => call[0] as AnyCommand),
+    __rawCalls: (): ReturnType<Mock["mock"]["calls"]["slice"]> =>
+      sendSpy.mock.calls,
     enableDebug: (): void => {
       enableDebug(mocksContainer.debugLogger);
     },
@@ -663,7 +668,9 @@ export const mockClientInstance = <TClient extends AnyClient>(
       sendSpy.mockRestore();
       mocksContainer.map = new WeakMap();
     },
-    calls: (): Mock["mock"]["calls"] => sendSpy.mock.calls,
+    calls: (): AnyCommand[] => sendSpy.mock.calls.map((call) => call[0]),
+    __rawCalls: (): ReturnType<Mock["mock"]["calls"]["slice"]> =>
+      sendSpy.mock.calls,
     enableDebug: (): void => {
       enableDebug(mocksContainer.debugLogger);
     },
