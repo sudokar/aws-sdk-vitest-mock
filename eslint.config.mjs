@@ -14,6 +14,11 @@ export default tseslint.config(
   ...nx.configs["flat/typescript"],
   ...nx.configs["flat/javascript"],
   {
+    linterOptions: {
+      reportUnusedDisableDirectives: "error",
+    },
+  },
+  {
     ignores: [
       "node_modules",
       "**/dist",

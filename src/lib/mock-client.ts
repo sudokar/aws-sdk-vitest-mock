@@ -1,5 +1,8 @@
-import { SmithyResolvedConfiguration } from "@smithy/smithy-client";
-import type { MiddlewareStack, Handler } from "@smithy/types";
+import type {
+  Command as SmithyCommand,
+  SmithyResolvedConfiguration,
+} from "@smithy/smithy-client";
+import type { HttpHandlerOptions, MetadataBearer } from "@smithy/types";
 import { type Mock, vi } from "vitest";
 import {
   createNoSuchKeyError,
@@ -23,47 +26,57 @@ import {
 } from "./utils/paginator-helpers.js";
 import { createStream, type StreamInput } from "./utils/stream-helpers.js";
 
-// Define structural types to avoid strict dependency on specific @smithy/types versions
-export interface MetadataBearer {
-  $metadata?: unknown;
-}
-
-export interface StructuralCommand<
+// Use the Smithy Command type so we can preserve concrete input/output when mocking.
+export type StructuralCommand<
   TInput extends object,
   TOutput extends MetadataBearer,
-> {
-  // Make input readonly to match SDK Command interface for better inference
-  readonly input: TInput;
-  middlewareStack: MiddlewareStack<TInput, TOutput>;
-  resolveMiddleware(
-    stack: MiddlewareStack<TInput, TOutput>,
-    configuration: unknown,
-    options: unknown,
-  ): Handler<TInput, TOutput>;
-}
+> =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  | SmithyCommand<TInput, TOutput, any, any, any>
+  | {
+      readonly input: TInput;
+      readonly __awsSdkVitestMockOutput?: TOutput;
+    };
 
 export type CommandConstructor<
   TInput extends object,
   TOutput extends MetadataBearer,
 > = new (input: TInput) => StructuralCommand<TInput, TOutput>;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AwsCommandConstructor = CommandConstructor<any, MetadataBearer>;
+
+export type CommandInputType<TCtor extends AwsCommandConstructor> =
+  ConstructorParameters<TCtor>[0];
+
+export type CommandOutputType<TCtor extends AwsCommandConstructor> =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  InstanceType<TCtor> extends StructuralCommand<any, infer TOutput>
+    ? TOutput
+    : MetadataBearer;
+
 export type AnyClient = {
   send(command: AnyCommand): Promise<MetadataBearer>;
-  config: SmithyResolvedConfiguration<unknown>;
+  config:
+    | SmithyResolvedConfiguration<HttpHandlerOptions>
+    | Record<string, unknown>;
 };
 
 export type AnyCommand = StructuralCommand<object, MetadataBearer>;
 
 // Allow protected constructors by accepting prototype property directly if needed
 export type ClientConstructor<TClient extends AnyClient> =
-  | (abstract new (config: unknown) => TClient)
+  | (abstract new (...args: unknown[]) => TClient)
   | { prototype: TClient };
 
 type CommandHandler<
   TInput extends object = object,
   TOutput extends MetadataBearer = MetadataBearer,
   TClient extends AnyClient = AnyClient,
-> = (input: TInput, getClient: () => TClient | undefined) => Promise<TOutput>;
+> = (
+  input: TInput,
+  clientInstance: TClient | undefined,
+) => Promise<Partial<TOutput>>;
 
 interface MockEntry<
   TInput extends object = object,
@@ -148,11 +161,15 @@ function matchesStrict<T extends object>(
 
 export interface AwsClientStub<TClient extends AnyClient = AnyClient> {
   readonly client: TClient | undefined;
-  on: <TInput extends object, TOutput extends MetadataBearer>(
-    command: CommandConstructor<TInput, TOutput>,
-    request?: Partial<TInput>,
+  on: <TCtor extends AwsCommandConstructor>(
+    command: TCtor,
+    request?: Partial<CommandInputType<TCtor>>,
     options?: MockOptions,
-  ) => AwsCommandStub<TInput, TOutput, TClient>;
+  ) => AwsCommandStub<
+    CommandInputType<TCtor>,
+    CommandOutputType<TCtor>,
+    TClient
+  >;
   reset: () => void;
   restore: () => void;
   calls: () => ReturnType<Mock["mock"]["calls"]["slice"]>;
@@ -247,7 +264,7 @@ export interface AwsCommandStub<
 }
 
 type MocksContainer = {
-  map: WeakMap<CommandConstructor<object, MetadataBearer>, MockEntry[]>;
+  map: WeakMap<AwsCommandConstructor, MockEntry[]>;
   debugLogger: DebugLogger;
 };
 
@@ -266,7 +283,7 @@ function createMockImplementation(
     );
 
     const mocks = container.map.get(
-      command.constructor as CommandConstructor<object, MetadataBearer>,
+      command.constructor as AwsCommandConstructor,
     );
     if (mocks) {
       container.debugLogger.log(
@@ -301,7 +318,10 @@ function createMockImplementation(
             `Removed one-time mock for ${command.constructor.name}`,
           );
         }
-        return mock.handler(command.input, getClient);
+        return mock.handler(
+          command.input,
+          getClient(),
+        ) as Promise<MetadataBearer>;
       }
     } else {
       container.debugLogger.log(
@@ -316,15 +336,17 @@ function createMockImplementation(
 }
 
 function createCommandStub<
-  TInput extends object,
-  TOutput extends MetadataBearer,
+  TCtor extends AwsCommandConstructor,
   TClient extends AnyClient,
 >(
   container: MocksContainer,
-  command: CommandConstructor<TInput, TOutput>,
-  matcher: Partial<TInput> | undefined,
+  command: TCtor,
+  matcher: Partial<CommandInputType<TCtor>> | undefined,
   options: MockOptions = {},
-): AwsCommandStub<TInput, TOutput, TClient> {
+): AwsCommandStub<CommandInputType<TCtor>, CommandOutputType<TCtor>, TClient> {
+  type TInput = CommandInputType<TCtor>;
+  type TOutput = CommandOutputType<TCtor>;
+
   const addEntry = (
     handler: CommandHandler<TInput, TOutput, TClient>,
     once: boolean,
@@ -336,9 +358,7 @@ function createCommandStub<
       strict: !!options.strict,
     };
     const existingMocks =
-      container.map.get(
-        command as unknown as CommandConstructor<object, MetadataBearer>,
-      ) ?? [];
+      container.map.get(command as unknown as AwsCommandConstructor) ?? [];
 
     if (once) {
       // Insert "once" handlers before permanent handlers
@@ -349,7 +369,7 @@ function createCommandStub<
         existingMocks.splice(permanentIndex, 0, entry as unknown as MockEntry);
       }
       container.map.set(
-        command as unknown as CommandConstructor<object, MetadataBearer>,
+        command as unknown as AwsCommandConstructor,
         existingMocks,
       );
     } else {
@@ -359,7 +379,7 @@ function createCommandStub<
       );
       filteredMocks.push(entry as unknown as MockEntry);
       container.map.set(
-        command as unknown as CommandConstructor<object, MetadataBearer>,
+        command as unknown as AwsCommandConstructor,
         filteredMocks,
       );
     }
@@ -570,12 +590,21 @@ export const mockClient = <TClient extends AnyClient>(
 
   const stub: AwsClientStub<TClient> = {
     client: undefined,
-    on: <TInput extends object, TOutput extends MetadataBearer>(
-      command: CommandConstructor<TInput, TOutput>,
-      request?: Partial<TInput>,
+    on: <TCtor extends AwsCommandConstructor>(
+      command: TCtor,
+      request?: Partial<CommandInputType<TCtor>>,
       options?: MockOptions,
-    ): AwsCommandStub<TInput, TOutput, TClient> =>
-      createCommandStub(mocksContainer, command, request, options),
+    ): AwsCommandStub<
+      CommandInputType<TCtor>,
+      CommandOutputType<TCtor>,
+      TClient
+    > =>
+      createCommandStub<TCtor, TClient>(
+        mocksContainer,
+        command,
+        request,
+        options,
+      ),
     reset: (): void => {
       sendSpy.mockClear();
       mocksContainer.map = new WeakMap();
@@ -611,12 +640,21 @@ export const mockClientInstance = <TClient extends AnyClient>(
 
   const stub: AwsClientStub<AnyClient> = {
     client: clientInstance as unknown as AnyClient,
-    on: <TInput extends object, TOutput extends MetadataBearer>(
-      command: CommandConstructor<TInput, TOutput>,
-      request?: Partial<TInput>,
+    on: <TCtor extends AwsCommandConstructor>(
+      command: TCtor,
+      request?: Partial<CommandInputType<TCtor>>,
       options?: MockOptions,
-    ): AwsCommandStub<TInput, TOutput, AnyClient> =>
-      createCommandStub(mocksContainer, command, request, options),
+    ): AwsCommandStub<
+      CommandInputType<TCtor>,
+      CommandOutputType<TCtor>,
+      AnyClient
+    > =>
+      createCommandStub<TCtor, AnyClient>(
+        mocksContainer,
+        command,
+        request,
+        options,
+      ),
     reset: (): void => {
       sendSpy.mockClear();
       mocksContainer.map = new WeakMap();

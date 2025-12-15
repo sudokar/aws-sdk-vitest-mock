@@ -1,18 +1,20 @@
-import type { AwsClientStub } from "./mock-client.js";
+import { type MetadataBearer } from "@smithy/types";
+import type {
+  AwsClientStub,
+  CommandConstructor,
+  StructuralCommand,
+} from "./mock-client.js";
 import { colors } from "./utils/colors.js";
-
-type CommandConstructor = new (...args: unknown[]) => unknown;
 
 interface MatcherResult {
   pass: boolean;
   message: () => string;
 }
 
-interface CommandLike {
-  input: unknown;
-}
-
-type ReceivedCall = readonly [unknown, ...unknown[]];
+type ReceivedCall = readonly [
+  StructuralCommand<object, MetadataBearer>,
+  ...unknown[],
+];
 
 const getCommandCalls = (stub: AwsClientStub): ReceivedCall[] => {
   const rawCalls = stub.calls() as unknown;
@@ -27,9 +29,9 @@ const getCommandCalls = (stub: AwsClientStub): ReceivedCall[] => {
 };
 
 export const matchers = {
-  toHaveReceivedCommand(
+  toHaveReceivedCommand<TInput extends object, TOutput extends MetadataBearer>(
     received: AwsClientStub,
-    command: CommandConstructor,
+    command: CommandConstructor<TInput, TOutput>,
   ): MatcherResult {
     const calls = getCommandCalls(received);
     const pass = calls.some((call) => call[0] instanceof command);
@@ -56,9 +58,12 @@ export const matchers = {
     };
   },
 
-  toHaveReceivedCommandTimes(
+  toHaveReceivedCommandTimes<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
     received: AwsClientStub,
-    command: CommandConstructor,
+    command: CommandConstructor<TInput, TOutput>,
     times: number,
   ): MatcherResult {
     const calls = getCommandCalls(received).filter(
@@ -76,18 +81,19 @@ export const matchers = {
     };
   },
 
-  toHaveReceivedCommandWith(
+  toHaveReceivedCommandWith<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
     this: { equals: (a: unknown, b: unknown) => boolean },
     received: AwsClientStub,
-    command: CommandConstructor,
-    input: Record<string, unknown>,
+    command: CommandConstructor<TInput, TOutput>,
+    input: TInput,
   ): MatcherResult {
     const calls = getCommandCalls(received).filter(
       (call) => call[0] instanceof command,
     );
-    const pass = calls.some((call) =>
-      this.equals((call[0] as CommandLike).input, input),
-    );
+    const pass = calls.some((call) => this.equals(call[0].input, input));
     const commandName = command.name;
 
     return {
@@ -110,9 +116,7 @@ export const matchers = {
           return `Expected AWS SDK mock to have received command ${commandName_colored} with input:\n${input_colored}\n\nBut ${neverCalled}`;
         }
 
-        const actualInputs = calls.map(
-          (call) => (call[0] as CommandLike).input,
-        );
+        const actualInputs = calls.map((call) => call[0].input);
         const commandName_colored = colors.red(commandName);
         const input_colored = colors.cyan(JSON.stringify(input, undefined, 2));
         const butReceived = colors.gray("But received");
@@ -128,17 +132,20 @@ export const matchers = {
     };
   },
 
-  toHaveReceivedNthCommandWith(
+  toHaveReceivedNthCommandWith<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
     this: { equals: (a: unknown, b: unknown) => boolean },
     received: AwsClientStub,
     n: number,
-    command: CommandConstructor,
-    input: Record<string, unknown>,
+    command: CommandConstructor<TInput, TOutput>,
+    input: TInput,
   ): MatcherResult {
     const calls = getCommandCalls(received);
     const nthCall = calls[n - 1];
     const actualCommand = nthCall?.[0];
-    const actualInput = (actualCommand as CommandLike | undefined)?.input;
+    const actualInput = actualCommand?.input;
     const pass =
       Boolean(nthCall) &&
       actualCommand instanceof command &&
@@ -185,9 +192,12 @@ export const matchers = {
     };
   },
 
-  toHaveReceivedNoOtherCommands(
+  toHaveReceivedNoOtherCommands<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
     received: AwsClientStub,
-    expectedCommands: CommandConstructor[] = [],
+    expectedCommands: CommandConstructor<TInput, TOutput>[] = [],
   ): MatcherResult {
     const calls = getCommandCalls(received);
     const unexpectedCalls = calls.filter((call) => {
@@ -218,18 +228,38 @@ export const matchers = {
 };
 
 export interface AwsSdkMatchers<R = unknown> {
-  toHaveReceivedCommand(command: CommandConstructor): R;
-  toHaveReceivedCommandTimes(command: CommandConstructor, times: number): R;
-  toHaveReceivedCommandWith(
-    command: CommandConstructor,
-    input: Record<string, unknown>,
+  toHaveReceivedCommand<TInput extends object, TOutput extends MetadataBearer>(
+    command: CommandConstructor<TInput, TOutput>,
   ): R;
-  toHaveReceivedNthCommandWith(
+  toHaveReceivedCommandTimes<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
+    command: CommandConstructor<TInput, TOutput>,
+    times: number,
+  ): R;
+  toHaveReceivedCommandWith<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
+    command: CommandConstructor<TInput, TOutput>,
+    input: TInput,
+  ): R;
+  toHaveReceivedNthCommandWith<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
     n: number,
-    command: CommandConstructor,
-    input: Record<string, unknown>,
+    command: CommandConstructor<TInput, TOutput>,
+    input: TInput,
   ): R;
-  toHaveReceivedNoOtherCommands(expectedCommands?: CommandConstructor[]): R;
+
+  toHaveReceivedNoOtherCommands<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
+    expectedCommands?: CommandConstructor<TInput, TOutput>[],
+  ): R;
 }
 
 export type { MatcherResult };
