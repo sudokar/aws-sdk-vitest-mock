@@ -27,35 +27,27 @@ import {
 import { createStream, type StreamInput } from "./utils/stream-helpers.js";
 
 // Use the Smithy Command type so we can preserve concrete input/output when mocking.
-export interface StructuralCommandShape<
-  TInput extends object,
-  TOutput extends MetadataBearer,
-> {
-  readonly input: TInput;
-  readonly __awsSdkVitestMockOutput?: TOutput;
-}
-
 export type StructuralCommand<
   TInput extends object,
   TOutput extends MetadataBearer,
 > =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   | SmithyCommand<TInput, TOutput, any, any, any>
-  | StructuralCommandShape<TInput, TOutput>;
+  | {
+      readonly input: TInput;
+      readonly __awsSdkVitestMockOutput?: TOutput;
+    };
 
 export type CommandConstructor<
   TInput extends object,
   TOutput extends MetadataBearer,
 > = new (input: TInput) => StructuralCommand<TInput, TOutput>;
 
-type AwsCommandConstructor = new (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  input: any,
-) => StructuralCommand<object, MetadataBearer>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AwsCommandConstructor = CommandConstructor<any, MetadataBearer>;
 
 export type CommandInputType<TCtor extends AwsCommandConstructor> =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TCtor extends new (input: infer TInput) => any ? TInput : any;
+  ConstructorParameters<TCtor>[0];
 
 export type CommandOutputType<TCtor extends AwsCommandConstructor> =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
