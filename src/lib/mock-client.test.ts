@@ -519,7 +519,7 @@ describe("client access in handler", () => {
   test("callsFake should receive getClient", async () => {
     let capturedClient: S3Client | undefined;
     s3Mock.on(GetObjectCommand).callsFake((input, getClient) => {
-      capturedClient = getClient();
+      capturedClient = getClient;
       return Promise.resolve({
         Body: "ok" as unknown as GetObjectCommandOutput["Body"],
         $metadata: {},
@@ -538,7 +538,7 @@ describe("client access in handler", () => {
 
     let capturedClient: unknown;
     mock.on(GetObjectCommand).callsFake((input, getClient) => {
-      capturedClient = getClient();
+      capturedClient = getClient;
       return Promise.resolve({
         Body: "ok" as unknown as GetObjectCommandOutput["Body"],
         $metadata: {},
@@ -558,7 +558,7 @@ describe("client access in handler", () => {
     mock
       .on(GetObjectCommand)
       .callsFakeOnce(async (input: GetObjectCommandInput, getClient) => {
-        const c = getClient?.() as S3Client;
+        const c = getClient as S3Client;
         expect(c).toBe(client);
         expect(await c?.config.region()).toBe("us-east-1");
         return {
@@ -580,7 +580,7 @@ describe("client access in handler", () => {
     mock
       .on(GetObjectCommand)
       .callsFake(async (input: GetObjectCommandInput, getClient) => {
-        const c = getClient?.() as S3Client;
+        const c = getClient as S3Client;
         expect(c).toBe(client);
         expect(await c?.config.region()).toBe("us-east-1");
         return {

@@ -1,7 +1,7 @@
+import { type MetadataBearer } from "@smithy/types";
 import type {
   AwsClientStub,
   CommandConstructor,
-  MetadataBearer,
   StructuralCommand,
 } from "./mock-client.js";
 import { colors } from "./utils/colors.js";
