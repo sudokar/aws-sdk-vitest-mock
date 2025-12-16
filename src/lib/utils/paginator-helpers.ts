@@ -1,6 +1,7 @@
 export interface PaginatorOptions {
   pageSize?: number;
   tokenKey?: string;
+  inputTokenKey?: string;
   itemsKey?: string;
 }
 

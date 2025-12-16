@@ -524,9 +524,10 @@ function createCommandStub<
 
       addEntry((input) => {
         const tokenKey = options.tokenKey || "NextToken";
+        const inputTokenKey = options.inputTokenKey || tokenKey;
         const inputRecord = input as Record<string, unknown>;
         // eslint-disable-next-line security/detect-object-injection -- Dynamic token key access required for AWS pagination handling
-        const inputToken = inputRecord[tokenKey] as string | undefined;
+        const inputToken = inputRecord[inputTokenKey] as string | undefined;
 
         if (inputToken) {
           // Extract index from token

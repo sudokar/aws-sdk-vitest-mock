@@ -81,5 +81,45 @@ describe("paginator-helpers", () => {
         Items: [5],
       });
     });
+
+    it("should support DynamoDB-style pagination with custom output token", () => {
+      // DynamoDB uses LastEvaluatedKey in the response
+      // and ExclusiveStartKey in the request (handled by mock-client.ts)
+      const items = Array.from({ length: 15 }, (_, index) => ({
+        id: { S: `item-${index + 1}` },
+      }));
+      const responses = createPaginatedResponses(items, {
+        pageSize: 10,
+        tokenKey: "LastEvaluatedKey", // Output token key
+      });
+
+      expect(responses).toHaveLength(2);
+
+      // First page has LastEvaluatedKey
+      expect(responses[0].LastEvaluatedKey).toBe("token-10");
+      expect(responses[0].NextToken).toBeUndefined();
+      expect(responses[0].Items).toHaveLength(10);
+
+      // Last page has no token
+      expect(responses[1].LastEvaluatedKey).toBeUndefined();
+      expect(responses[1].Items).toHaveLength(5);
+    });
+
+    it("should support S3-style pagination with Contents", () => {
+      // S3 ListObjectsV2 uses Contents and ContinuationToken
+      const items = Array.from({ length: 15 }, (_, index) => ({
+        Key: `file-${index + 1}.txt`,
+      }));
+      const responses = createPaginatedResponses(items, {
+        pageSize: 10,
+        itemsKey: "Contents",
+        tokenKey: "NextContinuationToken",
+      });
+
+      expect(responses).toHaveLength(2);
+      expect(responses[0].Contents).toHaveLength(10);
+      expect(responses[0].NextContinuationToken).toBe("token-10");
+      expect(responses[0].Items).toBeUndefined();
+    });
   });
 });
