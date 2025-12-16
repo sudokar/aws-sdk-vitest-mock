@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import {
   S3Client,
@@ -696,6 +697,137 @@ describe("Stream Mocking", () => {
 
     expect(result1.Body).toBeDefined();
     expect(result2.Body).toBeDefined();
+  });
+
+  test("should create fresh streams for multiple calls with resolvesStream", async () => {
+    const testData = "test content";
+    s3Mock.on(GetObjectCommand).resolvesStream(testData);
+
+    // Helper to consume stream
+    const consumeStream = async (stream: Readable): Promise<string> => {
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk as Uint8Array);
+      }
+      return Buffer.concat(chunks).toString("utf8");
+    };
+
+    // First call - consume stream
+    const result1 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+    const content1 = await consumeStream(result1.Body as Readable);
+    expect(content1).toBe(testData);
+
+    // Second call - should get a fresh stream, not exhausted one
+    const result2 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+    const content2 = await consumeStream(result2.Body as Readable);
+    expect(content2).toBe(testData);
+
+    // Third call - verify it still works
+    const result3 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+    const content3 = await consumeStream(result3.Body as Readable);
+    expect(content3).toBe(testData);
+  });
+
+  test("should handle sequential resolvesStreamOnce and resolvesStream calls", async () => {
+    const testData1 = "First call content";
+    const testData2 = "Second call content";
+    const testData3 = "Subsequent calls content";
+
+    s3Mock
+      .on(GetObjectCommand)
+      .resolvesStreamOnce(testData1)
+      .resolvesStreamOnce(testData2)
+      .resolvesStream(testData3);
+
+    // Helper to consume stream
+    const consumeStream = async (stream: Readable): Promise<string> => {
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk as Uint8Array);
+      }
+      return Buffer.concat(chunks).toString("utf8");
+    };
+
+    // First call
+    const result1 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+    const content1 = await consumeStream(result1.Body as Readable);
+    expect(content1).toBe(testData1);
+
+    // Second call
+    const result2 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+    const content2 = await consumeStream(result2.Body as Readable);
+    expect(content2).toBe(testData2);
+
+    // Third call - uses permanent resolvesStream
+    const result3 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+    const content3 = await consumeStream(result3.Body as Readable);
+    expect(content3).toBe(testData3);
+
+    // Fourth call - should still use permanent resolvesStream
+    const result4 = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: "test-bucket",
+        Key: "test-key",
+      }),
+    );
+    const content4 = await consumeStream(result4.Body as Readable);
+    expect(content4).toBe(testData3);
+  });
+
+  test("should handle Buffer streams for multiple calls", async () => {
+    const testData = Buffer.from("Binary content");
+    s3Mock.on(GetObjectCommand).resolvesStream(testData);
+
+    // Helper to consume stream
+    const consumeStream = async (stream: Readable): Promise<Buffer> => {
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk as Uint8Array);
+      }
+      return Buffer.concat(chunks);
+    };
+
+    // Multiple calls should all work
+    for (let callIndex = 0; callIndex < 3; callIndex++) {
+      const result = await s3Client.send(
+        new GetObjectCommand({
+          Bucket: "test-bucket",
+          Key: "test-key",
+        }),
+      );
+      const content = await consumeStream(result.Body as Readable);
+      expect(content.equals(testData)).toBe(true);
+    }
   });
 });
 
