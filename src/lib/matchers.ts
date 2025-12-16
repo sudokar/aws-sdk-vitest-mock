@@ -17,7 +17,7 @@ type ReceivedCall = readonly [
 ];
 
 const getCommandCalls = (stub: AwsClientStub): ReceivedCall[] => {
-  const rawCalls = stub.calls() as unknown;
+  const rawCalls = stub.__rawCalls() as unknown;
 
   if (!Array.isArray(rawCalls)) {
     return [];

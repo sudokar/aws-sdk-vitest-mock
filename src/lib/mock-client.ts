@@ -56,13 +56,13 @@ export type CommandOutputType<TCtor extends AwsCommandConstructor> =
     : MetadataBearer;
 
 export type AnyClient = {
-  send(command: AnyCommand): Promise<MetadataBearer>;
+  send(command: AwsSdkCommand): Promise<MetadataBearer>;
   config:
     | SmithyResolvedConfiguration<HttpHandlerOptions>
     | Record<string, unknown>;
 };
 
-export type AnyCommand = StructuralCommand<object, MetadataBearer>;
+export type AwsSdkCommand = StructuralCommand<object, MetadataBearer>;
 
 // Allow protected constructors by accepting prototype property directly if needed
 export type ClientConstructor<TClient extends AnyClient> =
@@ -172,7 +172,9 @@ export interface AwsClientStub<TClient extends AnyClient = AnyClient> {
   >;
   reset: () => void;
   restore: () => void;
-  calls: () => ReturnType<Mock["mock"]["calls"]["slice"]>;
+  calls: () => AwsSdkCommand[];
+  /** @internal - For use by matchers only */
+  __rawCalls: () => ReturnType<Mock["mock"]["calls"]["slice"]>;
   enableDebug: () => void;
   disableDebug: () => void;
 }
@@ -270,10 +272,10 @@ type MocksContainer = {
 
 function createMockImplementation(
   container: MocksContainer,
-): (this: AnyClient, command: AnyCommand) => Promise<MetadataBearer> {
+): (this: AnyClient, command: AwsSdkCommand) => Promise<MetadataBearer> {
   return async function (
     this: AnyClient,
-    command: AnyCommand,
+    command: AwsSdkCommand,
   ): Promise<MetadataBearer> {
     const getClient = (): AnyClient => this;
 
@@ -613,7 +615,10 @@ export const mockClient = <TClient extends AnyClient>(
       sendSpy.mockRestore();
       mocksContainer.map = new WeakMap();
     },
-    calls: (): Mock["mock"]["calls"] => sendSpy.mock.calls,
+    calls: (): AwsSdkCommand[] =>
+      sendSpy.mock.calls.map((call) => call[0] as AwsSdkCommand),
+    __rawCalls: (): ReturnType<Mock["mock"]["calls"]["slice"]> =>
+      sendSpy.mock.calls,
     enableDebug: (): void => {
       enableDebug(mocksContainer.debugLogger);
     },
@@ -663,7 +668,9 @@ export const mockClientInstance = <TClient extends AnyClient>(
       sendSpy.mockRestore();
       mocksContainer.map = new WeakMap();
     },
-    calls: (): Mock["mock"]["calls"] => sendSpy.mock.calls,
+    calls: (): AwsSdkCommand[] => sendSpy.mock.calls.map((call) => call[0]),
+    __rawCalls: (): ReturnType<Mock["mock"]["calls"]["slice"]> =>
+      sendSpy.mock.calls,
     enableDebug: (): void => {
       enableDebug(mocksContainer.debugLogger);
     },

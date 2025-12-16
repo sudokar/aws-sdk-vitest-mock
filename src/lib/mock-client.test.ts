@@ -364,7 +364,7 @@ describe("mockClientInstance", () => {
 
     const calls = mock.calls();
     expect(calls).toHaveLength(2);
-    expect(calls[0][0]).toBeInstanceOf(GetObjectCommand);
+    expect(calls[0]).toBeInstanceOf(GetObjectCommand);
 
     mock.restore();
   });
