@@ -43,6 +43,8 @@ pnpm add -D aws-sdk-vitest-mock
 
 ### Basic Usage
 
+> **Note:** `mockClient()` mocks **all instances** of a client class. Use `mockClientInstance()` when you need to mock a specific instance.
+
 ```typescript
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import { mockClient } from "aws-sdk-vitest-mock";
@@ -65,10 +67,10 @@ describe("DocumentService", () => {
   let documentService: DocumentService;
 
   beforeEach(() => {
-    // Mock the S3 client
+    // Mock all instances of S3Client
     s3Mock = mockClient(S3Client);
 
-    // Create service with real S3Client (which is now mocked)
+    // Any S3Client instance created after this will be mocked
     const s3Client = new S3Client({ region: "us-east-1" });
     documentService = new DocumentService(s3Client);
   });
@@ -92,6 +94,18 @@ describe("DocumentService", () => {
   });
 });
 ```
+
+## 🎯 Key Concepts
+
+Understanding these concepts will help you use the library effectively:
+
+- **`mockClient(ClientClass)`** - Mocks **all instances** of a client class. Use this in most test scenarios where you control client creation.
+- **`mockClientInstance(instance)`** - Mocks a **specific client instance**. Use when the client is created outside your test (e.g., in application bootstrap).
+- **Command Matching** - Commands are matched by constructor. Optionally match by input properties (partial matching by default, strict matching available).
+- **Sequential Responses** - Use `resolvesOnce()` / `rejectsOnce()` for one-time behaviors that fall back to permanent handlers set with `resolves()` / `rejects()`.
+- **Chainable API** - All mock configuration methods return the stub, allowing method chaining for cleaner test setup.
+
+## 📖 Usage Guide
 
 ### Request Matching
 
@@ -121,56 +135,66 @@ s3Mock
 // All other calls return 'subsequent calls'
 ```
 
-### Fixture Loading
-
-Load mock responses from files for easier test data management:
+### Error Handling
 
 ```typescript
-// Load JSON response from file
-s3Mock.on(GetObjectCommand).resolvesFromFile("./fixtures/s3-response.json");
+s3Mock.on(GetObjectCommand).rejects(new Error("Not found"));
 
-// Load text response from file
-s3Mock.on(GetObjectCommand).resolvesFromFile("./fixtures/response.txt");
-
-// JSON files are automatically parsed, text files returned as strings
-// File paths are resolved relative to current working directory
+// Or with rejectsOnce
+s3Mock
+  .on(GetObjectCommand)
+  .rejectsOnce(new Error("Temporary failure"))
+  .resolves({ Body: "success" });
 ```
 
-### Paginator Support
-
-Mock AWS SDK v3 pagination with automatic token handling:
+### Custom Handlers
 
 ```typescript
-// Mock DynamoDB scan with pagination
-const items = Array.from({ length: 25 }, (_, i) => ({
-  id: { S: `item-${i + 1}` },
-}));
-
-dynamoMock.on(ScanCommand).resolvesPaginated(items, {
-  pageSize: 10,
-  itemsKey: "Items",
-  tokenKey: "NextToken",
-});
-
-// First call returns items 1-10 with NextToken
-// Second call with NextToken returns items 11-20
-// Third call returns items 21-25 without NextToken
-
-// Mock S3 list objects with pagination
-const objects = Array.from({ length: 15 }, (_, i) => ({
-  Key: `file-${i + 1}.txt`,
-}));
-
-s3Mock.on(ListObjectsV2Command).resolvesPaginated(objects, {
-  pageSize: 10,
-  itemsKey: "Contents",
-  tokenKey: "ContinuationToken",
+s3Mock.on(GetObjectCommand).callsFake(async (input, getClient) => {
+  const client = getClient();
+  console.log("Bucket:", input.Bucket);
+  return { Body: `Dynamic response for ${input.Key}` };
 });
 ```
+
+### Mocking Existing Instances
+
+Use `mockClientInstance()` when you need to mock a client that's already been created:
+
+```typescript
+// Your application service that uses an injected S3 client
+class FileUploadService {
+  constructor(private s3Client: S3Client) {}
+
+  async uploadFile(bucket: string, key: string, data: string) {
+    return await this.s3Client.send(
+      new PutObjectCommand({ Bucket: bucket, Key: key, Body: data }),
+    );
+  }
+}
+
+test("should mock existing S3 client instance", async () => {
+  // Client is already created (e.g., in application bootstrap)
+  const s3Client = new S3Client({ region: "us-east-1" });
+  const service = new FileUploadService(s3Client);
+
+  // Mock the specific client instance
+  const mock = mockClientInstance(s3Client);
+  mock.on(PutObjectCommand).resolves({ ETag: "mock-etag" });
+
+  // Test your service
+  const result = await service.uploadFile("bucket", "key", "data");
+
+  expect(result.ETag).toBe("mock-etag");
+  expect(mock).toHaveReceivedCommand(PutObjectCommand);
+});
+```
+
+## 🔧 AWS Service Examples
 
 ### DynamoDB with Marshal/Unmarshal
 
-Mock DynamoDB operations using AWS SDK's marshal/unmarshal utilities for type-safe data handling:
+Mock DynamoDB operations using marshal/unmarshal utilities for type-safe data handling:
 
 ```typescript
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
@@ -265,7 +289,9 @@ describe("UserService with DynamoDB", () => {
 });
 ```
 
-### Stream Mocking (S3 Helper)
+## 🚀 Advanced Features
+
+### Stream Mocking (S3)
 
 Mock S3 operations that return streams with automatic environment detection:
 
@@ -283,21 +309,70 @@ s3Mock
   .resolvesStream("Subsequent calls");
 ```
 
-### Delay/Latency Simulation
+### Paginator Support
 
-Simulate network delays for testing timeouts and race conditions:
+Mock AWS SDK v3 pagination with automatic token handling:
 
 ```typescript
-// Resolve with delay
-s3Mock.on(GetObjectCommand).resolvesWithDelay({ Body: "data" }, 1000);
+// Mock DynamoDB scan with pagination
+// DynamoDB uses different keys for input (ExclusiveStartKey) and output (LastEvaluatedKey)
+const items = Array.from({ length: 25 }, (_, i) => ({
+  id: { S: `item-${i + 1}` },
+}));
 
-// Reject with delay
-s3Mock.on(GetObjectCommand).rejectsWithDelay("Network timeout", 500);
+dynamoMock.on(ScanCommand).resolvesPaginated(items, {
+  pageSize: 10,
+  itemsKey: "Items",
+  tokenKey: "LastEvaluatedKey", // Token key in response
+  inputTokenKey: "ExclusiveStartKey", // Token key in request (when different from response)
+});
+
+// First call returns items 1-10 with LastEvaluatedKey
+const result1 = await client.send(new ScanCommand({ TableName: "test" }));
+// result1.LastEvaluatedKey = "token-10"
+
+// Second call with ExclusiveStartKey returns items 11-20
+const result2 = await client.send(
+  new ScanCommand({
+    TableName: "test",
+    ExclusiveStartKey: result1.LastEvaluatedKey,
+  }),
+);
+// result2.LastEvaluatedKey = "token-20"
+
+// Third call returns items 21-25 without LastEvaluatedKey
+const result3 = await client.send(
+  new ScanCommand({
+    TableName: "test",
+    ExclusiveStartKey: result2.LastEvaluatedKey,
+  }),
+);
+// result3.LastEvaluatedKey = undefined (no more pages)
+
+// Mock S3 list objects with pagination
+// S3 uses the same key for input and output, so inputTokenKey is optional
+const objects = Array.from({ length: 15 }, (_, i) => ({
+  Key: `file-${i + 1}.txt`,
+}));
+
+s3Mock.on(ListObjectsV2Command).resolvesPaginated(objects, {
+  pageSize: 10,
+  itemsKey: "Contents",
+  tokenKey: "NextContinuationToken", // Used for both input and output
+});
 ```
+
+**Pagination Options:**
+
+- `pageSize` - Number of items per page (default: 10)
+- `itemsKey` - Property name for items array in response (default: "Items")
+- `tokenKey` - Property name for pagination token in response (default: "NextToken")
+- `inputTokenKey` - Property name for pagination token in request (default: same as `tokenKey`)
+  - Use this when AWS service uses different names for input/output tokens (e.g., DynamoDB's `ExclusiveStartKey` vs `LastEvaluatedKey`)
 
 ### AWS Error Simulation
 
-Convenient methods for common AWS errors:
+Convenient helper methods for common AWS errors:
 
 ```typescript
 // S3 Errors
@@ -314,60 +389,33 @@ s3Mock.on(GetObjectCommand).rejectsWithThrottling();
 s3Mock.on(GetObjectCommand).rejectsWithInternalServerError();
 ```
 
-### Error Handling
+### Delay/Latency Simulation
+
+Simulate network delays for testing timeouts and race conditions:
 
 ```typescript
-s3Mock.on(GetObjectCommand).rejects(new Error("Not found"));
+// Resolve with delay
+s3Mock.on(GetObjectCommand).resolvesWithDelay({ Body: "data" }, 1000);
 
-// Or with rejectsOnce
-s3Mock
-  .on(GetObjectCommand)
-  .rejectsOnce(new Error("Temporary failure"))
-  .resolves({ Body: "success" });
+// Reject with delay
+s3Mock.on(GetObjectCommand).rejectsWithDelay("Network timeout", 500);
 ```
 
-### Custom Handlers
+### Fixture Loading
+
+Load mock responses from files for easier test data management:
 
 ```typescript
-s3Mock.on(GetObjectCommand).callsFake(async (input, getClient) => {
-  const client = getClient();
-  console.log("Bucket:", input.Bucket);
-  return { Body: `Dynamic response for ${input.Key}` };
-});
-```
+// Load JSON response from file (automatically parsed)
+s3Mock.on(GetObjectCommand).resolvesFromFile("./fixtures/s3-response.json");
 
-### Mocking Existing Instances
-
-```typescript
-// Your application service that uses an injected S3 client
-class FileUploadService {
-  constructor(private s3Client: S3Client) {}
-
-  async uploadFile(bucket: string, key: string, data: string) {
-    return await this.s3Client.send(
-      new PutObjectCommand({ Bucket: bucket, Key: key, Body: data }),
-    );
-  }
-}
-
-test("should mock existing S3 client instance", async () => {
-  // Create the client your application will use
-  const s3Client = new S3Client({ region: "us-east-1" });
-  const service = new FileUploadService(s3Client);
-
-  // Mock the existing client instance
-  const mock = mockClientInstance(s3Client);
-  mock.on(PutObjectCommand).resolves({ ETag: "mock-etag" });
-
-  // Test your service
-  const result = await service.uploadFile("bucket", "key", "data");
-
-  expect(result.ETag).toBe("mock-etag");
-  expect(mock).toHaveReceivedCommand(PutObjectCommand);
-});
+// Load text response from file (returned as string)
+s3Mock.on(GetObjectCommand).resolvesFromFile("./fixtures/response.txt");
 ```
 
 ### Debug Mode
+
+Enable debug logging to troubleshoot mock configurations when they're not matching as expected:
 
 Enable debug logging to troubleshoot mock configurations and see detailed information about command matching:
 
@@ -543,9 +591,11 @@ bun nx build
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the complete guide.
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
-This library was inspired by [aws-sdk-client-mock](https://github.com/m-radzikowski/aws-sdk-client-mock). Adapted the core concepts and API design for Vitest while adding additional features and capabilities.
+This library is based on the core ideas and API patterns introduced by [aws-sdk-client-mock](https://github.com/m-radzikowski/aws-sdk-client-mock), which is no longer actively maintained.
+
+It reimagines those concepts for Vitest, while extending them with additional features, improved ergonomics, and ongoing maintenance.
 
 ## 📝 License
 
