@@ -22,10 +22,15 @@ function createNodeStream(data: StreamInput): Readable {
   const buffer =
     typeof data === "string" ? Buffer.from(data, "utf8") : Buffer.from(data);
 
+  let pushed = false;
   return new Readable({
     read() {
-      this.push(buffer);
-      this.push(undefined);
+      if (!pushed) {
+        this.push(buffer);
+        // eslint-disable-next-line unicorn/no-null -- Node.js streams require null to signal end of stream
+        this.push(null);
+        pushed = true;
+      }
     },
   });
 }
