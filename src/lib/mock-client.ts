@@ -159,8 +159,56 @@ function matchesStrict<T extends object>(
   });
 }
 
+/**
+ * Client stub for configuring and managing mock behaviors for an AWS SDK client.
+ *
+ * @category Core Functions
+ *
+ * @example
+ * ```typescript
+ * const s3Mock = mockClient(S3Client);
+ *
+ * // Configure mock behavior
+ * s3Mock.on(GetObjectCommand).resolves({ Body: 'data' });
+ *
+ * // Reset mocks between tests
+ * s3Mock.reset();
+ *
+ * // Check what was called
+ * const calls = s3Mock.calls();
+ * ```
+ */
 export interface AwsClientStub<TClient extends AnyClient = AnyClient> {
+  /**
+   * The client instance being mocked (undefined for class-level mocks).
+   * @readonly
+   */
   readonly client: TClient | undefined;
+
+  /**
+   * Configure mock behavior for a specific command.
+   *
+   * @param command - The AWS SDK command constructor to mock
+   * @param request - Optional partial input to match against (uses partial matching by default)
+   * @param options - Optional configuration for strict matching
+   * @returns A command stub for configuring mock responses
+   *
+   * @example Match any input
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).resolves({ Body: 'data' });
+   * ```
+   *
+   * @example Match specific input (partial)
+   * ```typescript
+   * s3Mock.on(GetObjectCommand, { Bucket: 'my-bucket' }).resolves({ Body: 'bucket data' });
+   * ```
+   *
+   * @example Match exact input (strict)
+   * ```typescript
+   * s3Mock.on(GetObjectCommand, { Bucket: 'my-bucket', Key: 'file.txt' }, { strict: true })
+   *   .resolves({ Body: 'exact match' });
+   * ```
+   */
   on: <TCtor extends AwsCommandConstructor>(
     command: TCtor,
     request?: Partial<CommandInputType<TCtor>>,
@@ -170,96 +218,394 @@ export interface AwsClientStub<TClient extends AnyClient = AnyClient> {
     CommandOutputType<TCtor>,
     TClient
   >;
+
+  /**
+   * Clear all mock call history and configured behaviors.
+   * Use this between tests to ensure a clean state.
+   *
+   * @example
+   * ```typescript
+   * afterEach(() => {
+   *   s3Mock.reset();
+   * });
+   * ```
+   */
   reset: () => void;
+
+  /**
+   * Restore the original client behavior and clear all mocks.
+   * After calling restore, the client will no longer be mocked.
+   *
+   * @example
+   * ```typescript
+   * afterAll(() => {
+   *   s3Mock.restore();
+   * });
+   * ```
+   */
   restore: () => void;
+
+  /**
+   * Get an array of all commands that were sent to the client.
+   *
+   * @returns Array of AWS SDK commands
+   *
+   * @example
+   * ```typescript
+   * const calls = s3Mock.calls();
+   * console.log(calls.length); // Number of commands sent
+   * console.log(calls[0].input); // Input of first command
+   * ```
+   */
   calls: () => AwsSdkCommand[];
+
   /** @internal - For use by matchers only */
   __rawCalls: () => ReturnType<Mock["mock"]["calls"]["slice"]>;
+
+  /**
+   * Enable debug logging to see which mocks are being matched.
+   * Useful for troubleshooting mock configurations.
+   *
+   * @example
+   * ```typescript
+   * s3Mock.enableDebug();
+   * ```
+   */
   enableDebug: () => void;
+
+  /**
+   * Disable debug logging.
+   *
+   * @example
+   * ```typescript
+   * s3Mock.disableDebug();
+   * ```
+   */
   disableDebug: () => void;
 }
 
+/**
+ * Command stub for configuring mock behaviors for a specific AWS SDK command.
+ * Provides a fluent API for setting up various mock responses and behaviors.
+ *
+ * @category Command Stub
+ *
+ * @example Basic usage
+ * ```typescript
+ * const s3Mock = mockClient(S3Client);
+ * s3Mock.on(GetObjectCommand).resolves({ Body: 'data' });
+ * ```
+ *
+ * @example Chaining multiple behaviors
+ * ```typescript
+ * s3Mock.on(PutObjectCommand)
+ *   .resolvesOnce({ ETag: '123' })
+ *   .resolvesOnce({ ETag: '456' })
+ *   .resolves({ ETag: 'default' });
+ * ```
+ */
 export interface AwsCommandStub<
   TInput extends object,
   TOutput extends MetadataBearer,
   TClient extends AnyClient = AnyClient,
 > {
-  /** Set a permanent mock response (used after all once handlers are consumed) */
+  /**
+   * Set a permanent mock response that will be used after all one-time handlers are consumed.
+   *
+   * @param output - Partial output object to return when the command is called
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).resolves({ Body: 'file contents' });
+   * ```
+   */
   resolves: (
     output: Partial<TOutput>,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Set a permanent mock rejection (used after all once handlers are consumed) */
+
+  /**
+   * Set a permanent mock rejection that will be used after all one-time handlers are consumed.
+   *
+   * @param error - Error object or error message string
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).rejects(new Error('Access denied'));
+   * ```
+   */
   rejects: (error: Error | string) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Set a permanent custom handler (used after all once handlers are consumed) */
+
+  /**
+   * Set a permanent custom handler function that will be used after all one-time handlers are consumed.
+   *
+   * @param fn - Handler function that receives input and client instance
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).callsFake(async (input) => {
+   *   return { Body: `Contents of ${input.Key}` };
+   * });
+   * ```
+   */
   callsFake: (
     fn: CommandHandler<TInput, TOutput, TClient>,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Add a one-time mock response (consumed in order) */
+
+  /**
+   * Add a one-time mock response that will be consumed in order.
+   *
+   * @param output - Partial output object to return
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand)
+   *   .resolvesOnce({ Body: 'first call' })
+   *   .resolvesOnce({ Body: 'second call' });
+   * ```
+   */
   resolvesOnce: (
     output: Partial<TOutput>,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Add a one-time mock rejection (consumed in order) */
+
+  /**
+   * Add a one-time mock rejection that will be consumed in order.
+   *
+   * @param error - Error object or error message string
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand)
+   *   .rejectsOnce('First call fails')
+   *   .resolves({ Body: 'second call succeeds' });
+   * ```
+   */
   rejectsOnce: (
     error: Error | string,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Add a one-time custom handler (consumed in order) */
+
+  /**
+   * Add a one-time custom handler that will be consumed in order.
+   *
+   * @param fn - Handler function that receives input and client instance
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand)
+   *   .callsFakeOnce(async (input) => ({ Body: 'once' }))
+   *   .resolves({ Body: 'permanent' });
+   * ```
+   */
   callsFakeOnce: (
     fn: CommandHandler<TInput, TOutput, TClient>,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Set a permanent stream response for S3-like operations */
+
+  /**
+   * Set a permanent stream response for S3-like operations.
+   *
+   * @param data - String, Buffer, or Readable stream
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).resolvesStream('file contents');
+   * ```
+   */
   resolvesStream: (
     data: StreamInput,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Set a one-time stream response for S3-like operations */
+
+  /**
+   * Set a one-time stream response for S3-like operations.
+   *
+   * @param data - String, Buffer, or Readable stream
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand)
+   *   .resolvesStreamOnce('first stream')
+   *   .resolvesStream('default stream');
+   * ```
+   */
   resolvesStreamOnce: (
     data: StreamInput,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Set a permanent mock response with delay */
+
+  /**
+   * Set a permanent mock response with a delay in milliseconds.
+   *
+   * @param output - Partial output object to return
+   * @param delayMs - Delay in milliseconds before resolving
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).resolvesWithDelay({ Body: 'data' }, 1000);
+   * ```
+   */
   resolvesWithDelay: (
     output: Partial<TOutput>,
     delayMs: number,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Set a permanent mock rejection with delay */
+
+  /**
+   * Set a permanent mock rejection with a delay in milliseconds.
+   *
+   * @param error - Error object or error message string
+   * @param delayMs - Delay in milliseconds before rejecting
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).rejectsWithDelay('Timeout', 5000);
+   * ```
+   */
   rejectsWithDelay: (
     error: Error | string,
     delayMs: number,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Reject with S3 NoSuchKey error */
+
+  /**
+   * Reject with an S3 NoSuchKey error.
+   *
+   * @param key - Optional key name for error message
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).rejectsWithNoSuchKey('missing-file.txt');
+   * ```
+   */
   rejectsWithNoSuchKey: (
     key?: string,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Reject with S3 NoSuchBucket error */
+
+  /**
+   * Reject with an S3 NoSuchBucket error.
+   *
+   * @param bucket - Optional bucket name for error message
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).rejectsWithNoSuchBucket('my-bucket');
+   * ```
+   */
   rejectsWithNoSuchBucket: (
     bucket?: string,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Reject with AccessDenied error */
+
+  /**
+   * Reject with an AccessDenied error.
+   *
+   * @param resource - Optional resource name for error message
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).rejectsWithAccessDenied('private-file.txt');
+   * ```
+   */
   rejectsWithAccessDenied: (
     resource?: string,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Reject with DynamoDB ResourceNotFound error */
+
+  /**
+   * Reject with a DynamoDB ResourceNotFound error.
+   *
+   * @param resource - Optional resource name for error message
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * dynamoMock.on(GetItemCommand).rejectsWithResourceNotFound('MyTable');
+   * ```
+   */
   rejectsWithResourceNotFound: (
     resource?: string,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Reject with DynamoDB ConditionalCheckFailed error */
+
+  /**
+   * Reject with a DynamoDB ConditionalCheckFailed error.
+   *
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * dynamoMock.on(PutItemCommand).rejectsWithConditionalCheckFailed();
+   * ```
+   */
   rejectsWithConditionalCheckFailed: () => AwsCommandStub<
     TInput,
     TOutput,
     TClient
   >;
-  /** Reject with Throttling error */
+
+  /**
+   * Reject with a Throttling error.
+   *
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).rejectsWithThrottling();
+   * ```
+   */
   rejectsWithThrottling: () => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Reject with InternalServerError */
+
+  /**
+   * Reject with an InternalServerError.
+   *
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).rejectsWithInternalServerError();
+   * ```
+   */
   rejectsWithInternalServerError: () => AwsCommandStub<
     TInput,
     TOutput,
     TClient
   >;
-  /** Set paginated responses for AWS pagination */
+
+  /**
+   * Set paginated responses for AWS pagination patterns.
+   *
+   * @param items - Array of items to paginate
+   * @param options - Pagination configuration options
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(ListObjectsV2Command).resolvesPaginated([
+   *   { Key: 'file1.txt' },
+   *   { Key: 'file2.txt' }
+   * ], { pageSize: 1 });
+   * ```
+   */
   resolvesPaginated: <T = unknown>(
     items: T[],
     options?: PaginatorOptions,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
-  /** Load response from file (JSON files are parsed, others returned as strings) */
+
+  /**
+   * Load response from a file. JSON files are parsed, others returned as strings.
+   *
+   * @param filePath - Path to the file to load
+   * @returns The command stub for chaining
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).resolvesFromFile('./fixtures/response.json');
+   * ```
+   */
   resolvesFromFile: (
     filePath: string,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
@@ -574,6 +920,30 @@ function createCommandStub<
   return stub;
 }
 
+/**
+ * Create a mock for an AWS SDK client class.
+ *
+ * Use this function when you want to mock all instances of a client class.
+ *
+ * @category Core Functions
+ *
+ * @param clientConstructor - The AWS SDK client class to mock
+ * @returns A client stub for configuring mock behaviors
+ *
+ * @example
+ * ```typescript
+ * import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+ * import { mockClient } from 'aws-sdk-vitest-mock';
+ *
+ * const s3Mock = mockClient(S3Client);
+ *
+ * s3Mock.on(GetObjectCommand).resolves({ Body: 'file contents' });
+ *
+ * const client = new S3Client({});
+ * const result = await client.send(new GetObjectCommand({ Bucket: 'my-bucket', Key: 'file.txt' }));
+ * // result.Body === 'file contents'
+ * ```
+ */
 export const mockClient = <TClient extends AnyClient>(
   clientConstructor: ClientConstructor<TClient>,
 ): AwsClientStub<TClient> => {
@@ -631,6 +1001,30 @@ export const mockClient = <TClient extends AnyClient>(
   return stub;
 };
 
+/**
+ * Create a mock for a specific AWS SDK client instance.
+ *
+ * Use this function when you want to mock a single client instance.
+ *
+ * @category Core Functions
+ *
+ * @param clientInstance - The AWS SDK client instance to mock
+ * @returns A client stub for configuring mock behaviors
+ *
+ * @example
+ * ```typescript
+ * import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+ * import { mockClientInstance } from 'aws-sdk-vitest-mock';
+ *
+ * const client = new S3Client({});
+ * const s3Mock = mockClientInstance(client);
+ *
+ * s3Mock.on(GetObjectCommand).resolves({ Body: 'file contents' });
+ *
+ * const result = await client.send(new GetObjectCommand({ Bucket: 'my-bucket', Key: 'file.txt' }));
+ * // result.Body === 'file contents'
+ * ```
+ */
 export const mockClientInstance = <TClient extends AnyClient>(
   clientInstance: TClient,
 ): AwsClientStub<AnyClient> => {

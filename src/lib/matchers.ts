@@ -28,7 +28,37 @@ const getCommandCalls = (stub: AwsClientStub): ReceivedCall[] => {
   );
 };
 
+/**
+ * Custom Vitest matchers for asserting AWS SDK command calls.
+ *
+ * @category Matchers
+ *
+ * @example Setup matchers in your test setup file
+ * ```typescript
+ * import { expect } from 'vitest';
+ * import { matchers } from 'aws-sdk-vitest-mock';
+ *
+ * expect.extend(matchers);
+ * ```
+ */
 export const matchers = {
+  /**
+   * Assert that a command was received at least once.
+   *
+   * @param received - The AWS client stub
+   * @param command - The command constructor to check for
+   * @returns Matcher result
+   *
+   * @example
+   * ```typescript
+   * const s3Mock = mockClient(S3Client);
+   * const client = new S3Client({});
+   *
+   * await client.send(new GetObjectCommand({ Bucket: 'test', Key: 'file.txt' }));
+   *
+   * expect(s3Mock).toHaveReceivedCommand(GetObjectCommand);
+   * ```
+   */
   toHaveReceivedCommand<TInput extends object, TOutput extends MetadataBearer>(
     received: AwsClientStub,
     command: CommandConstructor<TInput, TOutput>,
@@ -58,6 +88,25 @@ export const matchers = {
     };
   },
 
+  /**
+   * Assert that a command was received exactly N times.
+   *
+   * @param received - The AWS client stub
+   * @param command - The command constructor to check for
+   * @param times - The exact number of times the command should have been received
+   * @returns Matcher result
+   *
+   * @example
+   * ```typescript
+   * const s3Mock = mockClient(S3Client);
+   * const client = new S3Client({});
+   *
+   * await client.send(new GetObjectCommand({ Bucket: 'test', Key: 'file1.txt' }));
+   * await client.send(new GetObjectCommand({ Bucket: 'test', Key: 'file2.txt' }));
+   *
+   * expect(s3Mock).toHaveReceivedCommandTimes(GetObjectCommand, 2);
+   * ```
+   */
   toHaveReceivedCommandTimes<
     TInput extends object,
     TOutput extends MetadataBearer,
@@ -81,6 +130,27 @@ export const matchers = {
     };
   },
 
+  /**
+   * Assert that a command was received with specific input parameters.
+   *
+   * @param received - The AWS client stub
+   * @param command - The command constructor to check for
+   * @param input - The expected input parameters
+   * @returns Matcher result
+   *
+   * @example
+   * ```typescript
+   * const s3Mock = mockClient(S3Client);
+   * const client = new S3Client({});
+   *
+   * await client.send(new GetObjectCommand({ Bucket: 'test', Key: 'file.txt' }));
+   *
+   * expect(s3Mock).toHaveReceivedCommandWith(GetObjectCommand, {
+   *   Bucket: 'test',
+   *   Key: 'file.txt'
+   * });
+   * ```
+   */
   toHaveReceivedCommandWith<
     TInput extends object,
     TOutput extends MetadataBearer,
@@ -132,6 +202,29 @@ export const matchers = {
     };
   },
 
+  /**
+   * Assert that the Nth command call was a specific command with specific input.
+   *
+   * @param received - The AWS client stub
+   * @param n - The call number (1-indexed)
+   * @param command - The command constructor to check for
+   * @param input - The expected input parameters
+   * @returns Matcher result
+   *
+   * @example
+   * ```typescript
+   * const s3Mock = mockClient(S3Client);
+   * const client = new S3Client({});
+   *
+   * await client.send(new PutObjectCommand({ Bucket: 'test', Key: 'file1.txt' }));
+   * await client.send(new GetObjectCommand({ Bucket: 'test', Key: 'file2.txt' }));
+   *
+   * expect(s3Mock).toHaveReceivedNthCommandWith(2, GetObjectCommand, {
+   *   Bucket: 'test',
+   *   Key: 'file2.txt'
+   * });
+   * ```
+   */
   toHaveReceivedNthCommandWith<
     TInput extends object,
     TOutput extends MetadataBearer,
@@ -192,6 +285,24 @@ export const matchers = {
     };
   },
 
+  /**
+   * Assert that no commands other than the expected ones were received.
+   *
+   * @param received - The AWS client stub
+   * @param expectedCommands - Array of command constructors that are allowed
+   * @returns Matcher result
+   *
+   * @example
+   * ```typescript
+   * const s3Mock = mockClient(S3Client);
+   * const client = new S3Client({});
+   *
+   * await client.send(new GetObjectCommand({ Bucket: 'test', Key: 'file.txt' }));
+   * await client.send(new GetObjectCommand({ Bucket: 'test', Key: 'other.txt' }));
+   *
+   * expect(s3Mock).toHaveReceivedNoOtherCommands([GetObjectCommand]);
+   * ```
+   */
   toHaveReceivedNoOtherCommands<
     TInput extends object,
     TOutput extends MetadataBearer,
@@ -227,10 +338,26 @@ export const matchers = {
   },
 };
 
+/**
+ * TypeScript interface for AWS SDK Vitest matchers.
+ * This interface is used to extend Vitest's assertion types.
+ *
+ * @category Matchers
+ */
 export interface AwsSdkMatchers<R = unknown> {
+  /**
+   * Assert that a command was received at least once.
+   * @param command - The command constructor to check for
+   */
   toHaveReceivedCommand<TInput extends object, TOutput extends MetadataBearer>(
     command: CommandConstructor<TInput, TOutput>,
   ): R;
+
+  /**
+   * Assert that a command was received exactly N times.
+   * @param command - The command constructor to check for
+   * @param times - The exact number of times
+   */
   toHaveReceivedCommandTimes<
     TInput extends object,
     TOutput extends MetadataBearer,
@@ -238,6 +365,12 @@ export interface AwsSdkMatchers<R = unknown> {
     command: CommandConstructor<TInput, TOutput>,
     times: number,
   ): R;
+
+  /**
+   * Assert that a command was received with specific input.
+   * @param command - The command constructor to check for
+   * @param input - The expected input parameters
+   */
   toHaveReceivedCommandWith<
     TInput extends object,
     TOutput extends MetadataBearer,
@@ -245,6 +378,13 @@ export interface AwsSdkMatchers<R = unknown> {
     command: CommandConstructor<TInput, TOutput>,
     input: TInput,
   ): R;
+
+  /**
+   * Assert that the Nth command call matches expectations.
+   * @param n - The call number (1-indexed)
+   * @param command - The command constructor to check for
+   * @param input - The expected input parameters
+   */
   toHaveReceivedNthCommandWith<
     TInput extends object,
     TOutput extends MetadataBearer,
@@ -254,6 +394,10 @@ export interface AwsSdkMatchers<R = unknown> {
     input: TInput,
   ): R;
 
+  /**
+   * Assert that only expected commands were received.
+   * @param expectedCommands - Array of allowed command constructors
+   */
   toHaveReceivedNoOtherCommands<
     TInput extends object,
     TOutput extends MetadataBearer,

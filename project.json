@@ -24,6 +24,10 @@
         "passWithNoTests": false,
         "reportsDirectory": "./coverage/aws-sdk-vitest-mock"
       }
+    },
+    "docs": {
+      "command": "typedoc",
+      "outputs": ["{projectRoot}/docs"]
     }
   }
 }

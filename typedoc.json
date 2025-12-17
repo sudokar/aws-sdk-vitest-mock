@@ -1,0 +1,47 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["./src/index.ts"],
+  "entryPointStrategy": "expand",
+  "out": "docs",
+  "plugin": [],
+  "exclude": [
+    "**/node_modules/**",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/test/**",
+    "**/tests/**",
+    "**/utils/**",
+    "**/lib/vitest-setup.ts"
+  ],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeExternals": true,
+  "excludeInternal": true,
+  "readme": "./README.md",
+  "name": "AWS SDK Vitest Mock - API Reference",
+  "includeVersion": true,
+  "sort": ["source-order", "required-first"],
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "categorizeByGroup": true,
+  "searchInComments": true,
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+  "theme": "default",
+  "githubPages": true,
+  "hideGenerator": false,
+  "excludeNotDocumented": false,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "externalPattern": ["**/node_modules/**"],
+  "excludeReferences": true
+}
