@@ -7,14 +7,6 @@
 
 - Closes #
 
-## Testing
-
-List the commands you ran to verify the change (prefer Nx commands where available):
-
-- [ ] `bun run nx lint`
-- [ ] `bun run nx test`
-- [ ] `bun run nx build`
-
 ## Checklist
 
 - [ ] I have reviewed my changes for correctness and clarity.
