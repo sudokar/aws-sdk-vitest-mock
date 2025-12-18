@@ -15,9 +15,6 @@
   <a href="https://github.com/sudokar/aws-sdk-vitest-mock/actions">
       <img src="https://github.com/sudokar/aws-sdk-vitest-mock/actions/workflows/ci.yml/badge.svg" alt="CI Status" />
   </a>
-  <a href="https://github.com/nrwl/nx">
-    <img src="https://img.shields.io/badge/monorepo-nx-143055?logo=nx&logoColor=white" alt="Nx Monorepo" />
-  </a>
   <img src="https://img.shields.io/badge/ESM%20Support-yes-4B32C3?logo=javascript" alt="ESM Support" />
   <img src="https://img.shields.io/badge/Zero%20Dependencies-yes-brightgreen" alt="Zero Dependencies" />
   <a href="https://eslint.org/">
