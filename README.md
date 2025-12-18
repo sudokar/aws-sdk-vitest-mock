@@ -20,13 +20,13 @@
   </a>
   <img src="https://img.shields.io/badge/ESM%20Support-yes-4B32C3?logo=javascript" alt="ESM Support" />
   <img src="https://img.shields.io/badge/Zero%20Dependencies-yes-brightgreen" alt="Zero Dependencies" />
-  <img src="https://img.shields.io/badge/Maintained-yes-brightgreen" alt="Maintained: Yes" />
   <a href="https://eslint.org/">
     <img src="https://img.shields.io/badge/code%20style-eslint-4B32C3?logo=eslint" alt="ESLint" />
   </a>
   <a href="https://prettier.io/">
     <img src="https://img.shields.io/badge/code%20style-prettier-F7B93E?logo=prettier" alt="Prettier" />
   </a>
+  <img src="https://img.shields.io/badge/Maintained-yes-brightgreen" alt="Maintained: Yes" />
 </p>
 
 ---
