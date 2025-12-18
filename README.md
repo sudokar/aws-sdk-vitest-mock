@@ -8,6 +8,27 @@
   A powerful, type-safe mocking library for AWS SDK v3 with Vitest
 </p>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/aws-sdk-vitest-mock">
+    <img src="https://img.shields.io/npm/v/aws-sdk-vitest-mock?color=cb3837&logo=npm" alt="npm version" />
+  </a>
+  <a href="https://github.com/sudokar/aws-sdk-vitest-mock/actions">
+      <img src="https://github.com/sudokar/aws-sdk-vitest-mock/actions/workflows/ci.yml/badge.svg" alt="CI Status" />
+  </a>
+  <a href="https://github.com/nrwl/nx">
+    <img src="https://img.shields.io/badge/monorepo-nx-143055?logo=nx&logoColor=white" alt="Nx Monorepo" />
+  </a>
+  <img src="https://img.shields.io/badge/ESM%20Support-yes-4B32C3?logo=javascript" alt="ESM Support" />
+  <img src="https://img.shields.io/badge/Zero%20Dependencies-yes-brightgreen" alt="Zero Dependencies" />
+  <img src="https://img.shields.io/badge/Maintained-yes-brightgreen" alt="Maintained: Yes" />
+  <a href="https://eslint.org/">
+    <img src="https://img.shields.io/badge/code%20style-eslint-4B32C3?logo=eslint" alt="ESLint" />
+  </a>
+  <a href="https://prettier.io/">
+    <img src="https://img.shields.io/badge/code%20style-prettier-F7B93E?logo=prettier" alt="Prettier" />
+  </a>
+</p>
+
 ---
 
 ## ✨ Features
