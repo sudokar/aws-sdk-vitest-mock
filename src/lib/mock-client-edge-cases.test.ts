@@ -147,7 +147,7 @@ describe("Matcher Edge Cases", () => {
           Metadata: { env: "dev" },
         }),
       ),
-    ).rejects.toThrow("No mock configured");
+    ).rejects.toThrow("No matching mock found");
   });
 
   test("should handle array values in partial matcher", async () => {
@@ -505,16 +505,28 @@ describe("Concurrent Operations", () => {
 });
 
 describe("Mock Lifecycle and Memory", () => {
-  test("should clean up mocks after reset", () => {
+  test("should clear call history after reset but keep mocks", async () => {
     const s3Mock = mockClient(S3Client);
+    const s3Client = new S3Client({});
 
     s3Mock
       .on(GetObjectCommand)
       .resolves({ Body: "test" as unknown as GetObjectCommandOutput["Body"] });
 
+    await s3Client.send(
+      new GetObjectCommand({ Bucket: "test-bucket", Key: "test-key" }),
+    );
+    expect(s3Mock).toHaveReceivedCommandTimes(GetObjectCommand, 1);
+
     s3Mock.reset();
 
     expect(s3Mock).toHaveReceivedCommandTimes(GetObjectCommand, 0);
+
+    // Mock should still work after reset
+    const result = await s3Client.send(
+      new GetObjectCommand({ Bucket: "test-bucket", Key: "test-key" }),
+    );
+    expect(result.Body).toBe("test");
 
     s3Mock.restore();
   });
@@ -534,23 +546,31 @@ describe("Mock Lifecycle and Memory", () => {
     s3Mock.restore();
   });
 
-  test("should support remocking after reset", async () => {
+  test("should support overriding mocks after reset", async () => {
     const s3Mock = mockClient(S3Client);
     const s3Client = new S3Client({});
 
     s3Mock.on(GetObjectCommand).resolves({
       Body: "first-mock" as unknown as GetObjectCommandOutput["Body"],
     });
+
+    const firstResult = await s3Client.send(
+      new GetObjectCommand({ Bucket: "test-bucket", Key: "test-key" }),
+    );
+    expect(firstResult.Body).toBe("first-mock");
+
     s3Mock.reset();
+
+    // Override the mock with a new one
     s3Mock.on(GetObjectCommand).resolves({
-      Body: "second" as unknown as GetObjectCommandOutput["Body"],
+      Body: "second-mock" as unknown as GetObjectCommandOutput["Body"],
     });
 
     const result = await s3Client.send(
       new GetObjectCommand({ Bucket: "test-bucket", Key: "test-key" }),
     );
 
-    expect(result.Body).toBe("second");
+    expect(result.Body).toBe("second-mock");
 
     s3Mock.restore();
   });
@@ -620,7 +640,7 @@ describe("Type Safety and Validation", () => {
       s3Client.send(
         new GetObjectCommand({ Bucket: "test-bucket", Key: "test-key" }),
       ),
-    ).rejects.toThrow("No mock configured for command: GetObjectCommand");
+    ).rejects.toThrow("No matching mock found for GetObjectCommand");
 
     s3Mock.restore();
   });

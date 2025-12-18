@@ -104,6 +104,9 @@ Understanding these concepts will help you use the library effectively:
 - **Command Matching** - Commands are matched by constructor. Optionally match by input properties (partial matching by default, strict matching available).
 - **Sequential Responses** - Use `resolvesOnce()` / `rejectsOnce()` for one-time behaviors that fall back to permanent handlers set with `resolves()` / `rejects()`.
 - **Chainable API** - All mock configuration methods return the stub, allowing method chaining for cleaner test setup.
+- **Test Lifecycle**:
+  - **`reset()`** - Clears call history while preserving mock configurations. Use when you want to verify multiple test scenarios with the same mock setup.
+  - **`restore()`** - Completely removes mocking and restores original client behavior. Use in `afterEach()` to clean up between tests.
 
 ## 📖 Usage Guide
 
@@ -187,6 +190,39 @@ test("should mock existing S3 client instance", async () => {
 
   expect(result.ETag).toBe("mock-etag");
   expect(mock).toHaveReceivedCommand(PutObjectCommand);
+});
+```
+
+### Test Lifecycle Management
+
+Use `reset()` to clear call history between assertions while keeping mock configurations. Use `restore()` to completely clean up mocking:
+
+```typescript
+test("should handle multiple operations with same mock", async () => {
+  const s3Mock = mockClient(S3Client);
+  const client = new S3Client({});
+
+  // Configure mock once
+  s3Mock.on(GetObjectCommand).resolves({ Body: "file-content" });
+
+  // First operation
+  await client.send(
+    new GetObjectCommand({ Bucket: "bucket", Key: "file1.txt" }),
+  );
+  expect(s3Mock).toHaveReceivedCommandTimes(GetObjectCommand, 1);
+
+  // Reset clears call history but keeps mock configuration
+  s3Mock.reset();
+  expect(s3Mock).toHaveReceivedCommandTimes(GetObjectCommand, 0);
+
+  // Second operation - mock still works
+  await client.send(
+    new GetObjectCommand({ Bucket: "bucket", Key: "file2.txt" }),
+  );
+  expect(s3Mock).toHaveReceivedCommandTimes(GetObjectCommand, 1);
+
+  // Clean up completely
+  s3Mock.restore();
 });
 ```
 
@@ -311,55 +347,94 @@ s3Mock
 
 ### Paginator Support
 
-Mock AWS SDK v3 pagination with automatic token handling:
+Mock AWS SDK v3 pagination with automatic token handling. **Tokens are the actual last item from each page** (works for both DynamoDB and S3).
+
+#### DynamoDB Pagination
 
 ```typescript
-// Mock DynamoDB scan with pagination
-// DynamoDB uses different keys for input (ExclusiveStartKey) and output (LastEvaluatedKey)
-const items = Array.from({ length: 25 }, (_, i) => ({
-  id: { S: `item-${i + 1}` },
-}));
+import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
+import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb';
 
-dynamoMock.on(ScanCommand).resolvesPaginated(items, {
-  pageSize: 10,
+// Create marshalled items (as they would be stored in DynamoDB)
+const users = [
+  { id: "user-1", name: "Alice", email: "alice@example.com" },
+  { id: "user-2", name: "Bob", email: "bob@example.com" },
+  { id: "user-3", name: "Charlie", email: "charlie@example.com" },
+];
+
+const marshalledUsers = users.map(user => marshall(user));
+
+// Configure pagination
+dynamoMock.on(ScanCommand).resolvesPaginated(marshalledUsers, {
+  pageSize: 1,
   itemsKey: "Items",
-  tokenKey: "LastEvaluatedKey", // Token key in response
-  inputTokenKey: "ExclusiveStartKey", // Token key in request (when different from response)
+  tokenKey: "LastEvaluatedKey",      // DynamoDB response key
+  inputTokenKey: "ExclusiveStartKey"  // DynamoDB request key
 });
 
-// First call returns items 1-10 with LastEvaluatedKey
-const result1 = await client.send(new ScanCommand({ TableName: "test" }));
-// result1.LastEvaluatedKey = "token-10"
+// Page 1: Get first user
+const page1 = await client.send(new ScanCommand({ TableName: "Users" }));
+expect(page1.Items).toHaveLength(1);
+// LastEvaluatedKey is the marshalled last item (object, not string!)
+expect(page1.LastEvaluatedKey).toEqual(marshall({ id: "user-1", name: "Alice", ... }));
 
-// Second call with ExclusiveStartKey returns items 11-20
-const result2 = await client.send(
+// Unmarshall the items
+const page1Users = page1.Items.map(item => unmarshall(item));
+console.log(page1Users[0]); // { id: "user-1", name: "Alice", ... }
+
+// Page 2: Use LastEvaluatedKey to get next page
+const page2 = await client.send(
   new ScanCommand({
-    TableName: "test",
-    ExclusiveStartKey: result1.LastEvaluatedKey,
-  }),
+    TableName: "Users",
+    ExclusiveStartKey: page1.LastEvaluatedKey, // Pass the object directly
+  })
 );
-// result2.LastEvaluatedKey = "token-20"
 
-// Third call returns items 21-25 without LastEvaluatedKey
-const result3 = await client.send(
+// Page 3: Continue until LastEvaluatedKey is undefined
+const page3 = await client.send(
   new ScanCommand({
-    TableName: "test",
-    ExclusiveStartKey: result2.LastEvaluatedKey,
-  }),
+    TableName: "Users",
+    ExclusiveStartKey: page2.LastEvaluatedKey,
+  })
 );
-// result3.LastEvaluatedKey = undefined (no more pages)
+expect(page3.LastEvaluatedKey).toBeUndefined(); // No more pages
+```
 
-// Mock S3 list objects with pagination
-// S3 uses the same key for input and output, so inputTokenKey is optional
-const objects = Array.from({ length: 15 }, (_, i) => ({
+#### S3 Pagination
+
+```typescript
+import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
+
+const objects = Array.from({ length: 100 }, (_, i) => ({
   Key: `file-${i + 1}.txt`,
+  Size: 1024,
+  LastModified: new Date(),
 }));
 
 s3Mock.on(ListObjectsV2Command).resolvesPaginated(objects, {
-  pageSize: 10,
+  pageSize: 50,
   itemsKey: "Contents",
-  tokenKey: "NextContinuationToken", // Used for both input and output
+  tokenKey: "NextContinuationToken",
+  inputTokenKey: "ContinuationToken"
 });
+
+// First page
+const page1 = await client.send(
+  new ListObjectsV2Command({ Bucket: "my-bucket" })
+);
+expect(page1.Contents).toHaveLength(50);
+// NextContinuationToken is the last object from page 1
+expect(page1.NextContinuationToken).toEqual({ Key: "file-50.txt", ... });
+
+// Second page
+const page2 = await client.send(
+  new ListObjectsV2Command({
+    Bucket: "my-bucket",
+    ContinuationToken: page1.NextContinuationToken,
+  })
+);
+expect(page2.Contents).toHaveLength(50);
+expect(page2.NextContinuationToken).toBeUndefined(); // No more pages
 ```
 
 **Pagination Options:**
@@ -367,7 +442,20 @@ s3Mock.on(ListObjectsV2Command).resolvesPaginated(objects, {
 - `pageSize` - Number of items per page (default: 10)
 - `itemsKey` - Property name for items array in response (default: "Items")
 - `tokenKey` - Property name for pagination token in response (default: "NextToken")
-- `inputTokenKey` - Property name for pagination token in request (default: same as `tokenKey`)
+  - DynamoDB: use `"LastEvaluatedKey"`
+  - S3: use `"NextContinuationToken"`
+- `inputTokenKey` - Property name for pagination token in request (defaults to same as tokenKey)
+  - DynamoDB: use `"ExclusiveStartKey"`
+  - S3: use `"ContinuationToken"`
+
+**How It Works:**
+
+The mock automatically uses the **last item from each page** as the pagination token. This means:
+
+- ✅ For DynamoDB: `LastEvaluatedKey` is a proper object (can be unmarshalled)
+- ✅ For S3: `NextContinuationToken` is the last object
+- ✅ Tokens represent actual data, not opaque strings
+- ✅ Works correctly with `unmarshall()` for DynamoDB
   - Use this when AWS service uses different names for input/output tokens (e.g., DynamoDB's `ExclusiveStartKey` vs `LastEvaluatedKey`)
 
 ### AWS Error Simulation
@@ -415,9 +503,7 @@ s3Mock.on(GetObjectCommand).resolvesFromFile("./fixtures/response.txt");
 
 ### Debug Mode
 
-Enable debug logging to troubleshoot mock configurations when they're not matching as expected:
-
-Enable debug logging to troubleshoot mock configurations and see detailed information about command matching:
+Enable debug logging to see detailed information about mock configuration, lifecycle events, and command interactions:
 
 ```typescript
 const s3Mock = mockClient(S3Client);
@@ -425,28 +511,61 @@ const s3Mock = mockClient(S3Client);
 // Enable debug logging
 s3Mock.enableDebug();
 
+// Configuration logs appear immediately:
+// [aws-sdk-vitest-mock](Debug) Configured resolves for GetObjectCommand
+// {
+//   "matcher": {
+//     "Bucket": "test-bucket"
+//   },
+//   "strict": false
+// }
 s3Mock
   .on(GetObjectCommand, { Bucket: "test-bucket" })
   .resolves({ Body: "data" });
 
-// This will log:
-// [AWS Mock Debug] Received command: GetObjectCommand
-// [AWS Mock Debug] Found 1 mock(s) for GetObjectCommand
-// [AWS Mock Debug] Using mock at index 0 for GetObjectCommand
+// Interaction logs appear when commands are sent:
+// [aws-sdk-vitest-mock](Debug) Received command: GetObjectCommand
+// {
+//   "Bucket": "test-bucket",
+//   "Key": "file.txt"
+// }
+// [aws-sdk-vitest-mock](Debug) Found 1 mock(s) for GetObjectCommand
+// [aws-sdk-vitest-mock](Debug) Using mock at index 0 for GetObjectCommand
 await client.send(
   new GetObjectCommand({ Bucket: "test-bucket", Key: "file.txt" }),
 );
+
+// Lifecycle logs:
+// [aws-sdk-vitest-mock](Debug) Clearing call history (mocks preserved)
+s3Mock.reset();
+
+// [aws-sdk-vitest-mock](Debug) Restoring original client behavior and clearing all mocks
+s3Mock.restore();
 
 // Disable debug logging
 s3Mock.disableDebug();
 ```
 
-Debug mode logs include:
+Debug mode provides comprehensive logging for:
+
+**Mock Configuration:**
+
+- Mock setup with `.on()`, `.resolves()`, `.rejects()`, `.callsFake()`, etc.
+- Matcher details and strict mode settings
+- Paginated response configuration
+- File-based fixture loading
+
+**Mock Interactions:**
 
 - Incoming commands and their inputs
 - Number of configured mocks for each command
 - Mock matching results and reasons for failures
 - One-time mock removal notifications
+
+**Lifecycle Events:**
+
+- Reset operations (clearing call history)
+- Restore operations (removing all mocks)
 
 ## 🧪 Test Coverage
 
@@ -528,7 +647,7 @@ Mocks an existing AWS SDK client instance.
 ### `AwsClientStub` Methods
 
 - `on(Command, matcher?, options?)` - Configure mock for a command
-- `reset()` - Clear all mocks and call history
+- `reset()` - Clear call history while preserving mock configurations
 - `restore()` - Restore original client behavior
 - `calls()` - Get call history
 - `enableDebug()` - Enable debug logging for troubleshooting

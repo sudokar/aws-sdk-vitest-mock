@@ -171,11 +171,17 @@ function matchesStrict<T extends object>(
  * // Configure mock behavior
  * s3Mock.on(GetObjectCommand).resolves({ Body: 'data' });
  *
- * // Reset mocks between tests
- * s3Mock.reset();
+ * // Mock works as configured
+ * await client.send(new GetObjectCommand({ Bucket: 'test', Key: 'file.txt' }));
+ * expect(s3Mock.calls()).toHaveLength(1);
  *
- * // Check what was called
- * const calls = s3Mock.calls();
+ * // Reset clears call history but keeps mock configuration
+ * s3Mock.reset();
+ * expect(s3Mock.calls()).toHaveLength(0);
+ *
+ * // Mock still works after reset
+ * await client.send(new GetObjectCommand({ Bucket: 'test', Key: 'file.txt' }));
+ * expect(s3Mock.calls()).toHaveLength(1);
  * ```
  */
 export interface AwsClientStub<TClient extends AnyClient = AnyClient> {
@@ -220,8 +226,9 @@ export interface AwsClientStub<TClient extends AnyClient = AnyClient> {
   >;
 
   /**
-   * Clear all mock call history and configured behaviors.
-   * Use this between tests to ensure a clean state.
+   * Clear mock call history while preserving configured behaviors.
+   * Mock configurations remain active after reset, only the call history is cleared.
+   * Use this between tests when you want to reuse the same mock setup.
    *
    * @example
    * ```typescript
@@ -263,18 +270,24 @@ export interface AwsClientStub<TClient extends AnyClient = AnyClient> {
   __rawCalls: () => ReturnType<Mock["mock"]["calls"]["slice"]>;
 
   /**
-   * Enable debug logging to see which mocks are being matched.
-   * Useful for troubleshooting mock configurations.
+   * Enable debug logging to see detailed information about mock configuration and interactions.
+   * Logs both mock setup (when `.on()`, `.resolves()`, etc. are called) and command execution details.
+   * Useful for troubleshooting mock configurations and why commands aren't matching expected mocks.
    *
    * @example
    * ```typescript
    * s3Mock.enableDebug();
+   * // Logs will appear for:
+   * // - Mock configuration (when .on(), .resolves(), etc. are called)
+   * // - Command execution (incoming commands and inputs)
+   * // - Mock matching results and reasons for failures
+   * // - Lifecycle events (reset, restore)
    * ```
    */
   enableDebug: () => void;
 
   /**
-   * Disable debug logging.
+   * Disable debug logging for mock configuration and interactions.
    *
    * @example
    * ```typescript
@@ -578,16 +591,51 @@ export interface AwsCommandStub<
   /**
    * Set paginated responses for AWS pagination patterns.
    *
-   * @param items - Array of items to paginate
+   * Tokens are automatically set to the last item of each page, which works for both
+   * DynamoDB (object tokens) and S3 (object tokens).
+   *
+   * @param items - Array of items to paginate (use marshalled items for DynamoDB)
    * @param options - Pagination configuration options
    * @returns The command stub for chaining
    *
-   * @example
+   * @example DynamoDB pagination with marshalled data
    * ```typescript
-   * s3Mock.on(ListObjectsV2Command).resolvesPaginated([
-   *   { Key: 'file1.txt' },
-   *   { Key: 'file2.txt' }
-   * ], { pageSize: 1 });
+   * import { marshall } from '@aws-sdk/util-dynamodb';
+   *
+   * const users = [
+   *   { id: "user-1", name: "Alice" },
+   *   { id: "user-2", name: "Bob" }
+   * ];
+   * const marshalledUsers = users.map(u => marshall(u));
+   *
+   * dynamoMock.on(ScanCommand).resolvesPaginated(marshalledUsers, {
+   *   pageSize: 1,
+   *   tokenKey: "LastEvaluatedKey",
+   *   inputTokenKey: "ExclusiveStartKey"
+   * });
+   *
+   * // LastEvaluatedKey will be the marshalled last item (object, not string)
+   * const result = await client.send(new ScanCommand({ TableName: "Users" }));
+   * // result.LastEvaluatedKey = { id: { S: "user-1" }, name: { S: "Alice" } }
+   * ```
+   *
+   * @example S3 pagination
+   * ```typescript
+   * const objects = [
+   *   { Key: 'file1.txt', Size: 100 },
+   *   { Key: 'file2.txt', Size: 200 }
+   * ];
+   *
+   * s3Mock.on(ListObjectsV2Command).resolvesPaginated(objects, {
+   *   pageSize: 1,
+   *   itemsKey: "Contents",
+   *   tokenKey: "NextContinuationToken",
+   *   inputTokenKey: "ContinuationToken"
+   * });
+   *
+   * // NextContinuationToken will be the last object from the page
+   * const result = await client.send(new ListObjectsV2Command({ Bucket: "bucket" }));
+   * // result.NextContinuationToken = { Key: 'file1.txt', Size: 100 }
    * ```
    */
   resolvesPaginated: <T = unknown>(
@@ -650,6 +698,27 @@ function createMockImplementation(
           `No matching mock found for ${command.constructor.name}`,
           command.input,
         );
+
+        // Build detailed error message for no matching mock
+        const matchers = mocks
+          .map((mock, index) => {
+            const matcherStr = mock.matcher
+              ? JSON.stringify(mock.matcher, undefined, 2)
+              : "any input";
+            const strictStr = mock.strict ? " (strict mode)" : "";
+            return `  Mock #${index + 1}: ${matcherStr}${strictStr}`;
+          })
+          .join("\n");
+
+        const receivedStr = JSON.stringify(command.input, undefined, 2);
+
+        throw new Error(
+          `No matching mock found for ${command.constructor.name}.\n\n` +
+            `Found ${mocks.length} mock(s) but none matched the input.\n\n` +
+            `Configured mocks:\n${matchers}\n\n` +
+            `Received input:\n${receivedStr}\n\n` +
+            `Tip: Enable debug mode with enableDebug() for detailed matching information.`,
+        );
       } else {
         // eslint-disable-next-line security/detect-object-injection -- Array access with validated index for mock retrieval
         const mock = mocks[matchingIndex];
@@ -677,8 +746,12 @@ function createMockImplementation(
       );
     }
 
+    // No mocks configured at all for this command
+    const receivedStr = JSON.stringify(command.input, undefined, 2);
     throw new Error(
-      `No mock configured for command: ${command.constructor.name}`,
+      `No mock configured for command: ${command.constructor.name}.\n\n` +
+        `Received input:\n${receivedStr}\n\n` +
+        `Did you forget to call mockClient.on(${command.constructor.name})?`,
     );
   };
 }
@@ -698,6 +771,7 @@ function createCommandStub<
   const addEntry = (
     handler: CommandHandler<TInput, TOutput, TClient>,
     once: boolean,
+    handlerType: string,
   ): void => {
     const entry: MockEntry<TInput, TOutput> = {
       matcher,
@@ -720,6 +794,10 @@ function createCommandStub<
         command as unknown as AwsCommandConstructor,
         existingMocks,
       );
+      container.debugLogger.log(
+        `Configured ${handlerType}Once for ${command.name}`,
+        matcher ? { matcher, strict: !!options.strict } : undefined,
+      );
     } else {
       // Permanent handlers replace any existing permanent handler for same matcher
       const filteredMocks = existingMocks.filter(
@@ -730,6 +808,10 @@ function createCommandStub<
         command as unknown as AwsCommandConstructor,
         filteredMocks,
       );
+      container.debugLogger.log(
+        `Configured ${handlerType} for ${command.name}`,
+        matcher ? { matcher, strict: !!options.strict } : undefined,
+      );
     }
   };
 
@@ -737,41 +819,49 @@ function createCommandStub<
     resolves(
       output: Partial<TOutput>,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => Promise.resolve(output as TOutput), false);
+      addEntry(() => Promise.resolve(output as TOutput), false, "resolves");
       return stub;
     },
     rejects(error: Error | string): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => {
-        const err = typeof error === "string" ? new Error(error) : error;
-        return Promise.reject(err);
-      }, false);
+      addEntry(
+        () => {
+          const err = typeof error === "string" ? new Error(error) : error;
+          return Promise.reject(err);
+        },
+        false,
+        "rejects",
+      );
       return stub;
     },
     callsFake(
       fn: CommandHandler<TInput, TOutput, TClient>,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(fn, false);
+      addEntry(fn, false, "callsFake");
       return stub;
     },
     resolvesOnce(
       output: Partial<TOutput>,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => Promise.resolve(output as TOutput), true);
+      addEntry(() => Promise.resolve(output as TOutput), true, "resolves");
       return stub;
     },
     rejectsOnce(
       error: Error | string,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => {
-        const err = typeof error === "string" ? new Error(error) : error;
-        return Promise.reject(err);
-      }, true);
+      addEntry(
+        () => {
+          const err = typeof error === "string" ? new Error(error) : error;
+          return Promise.reject(err);
+        },
+        true,
+        "rejects",
+      );
       return stub;
     },
     callsFakeOnce(
       fn: CommandHandler<TInput, TOutput, TClient>,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(fn, true);
+      addEntry(fn, true, "callsFake");
       return stub;
     },
     resolvesStream(
@@ -781,6 +871,7 @@ function createCommandStub<
         () =>
           Promise.resolve({ Body: createStream(data) } as unknown as TOutput),
         false,
+        "resolvesStream",
       );
       return stub;
     },
@@ -791,6 +882,7 @@ function createCommandStub<
         () =>
           Promise.resolve({ Body: createStream(data) } as unknown as TOutput),
         true,
+        "resolvesStream",
       );
       return stub;
     },
@@ -801,7 +893,7 @@ function createCommandStub<
       const delayedResolve = (resolve: (value: TOutput) => void) => {
         setTimeout(() => resolve(output as TOutput), delayMs);
       };
-      addEntry(() => new Promise(delayedResolve), false);
+      addEntry(() => new Promise(delayedResolve), false, "resolvesWithDelay");
       return stub;
     },
     rejectsWithDelay(
@@ -812,25 +904,37 @@ function createCommandStub<
       const delayedReject = (_: unknown, reject: (reason: Error) => void) => {
         setTimeout(() => reject(err), delayMs);
       };
-      addEntry(() => new Promise(delayedReject), false);
+      addEntry(() => new Promise(delayedReject), false, "rejectsWithDelay");
       return stub;
     },
     rejectsWithNoSuchKey(
       key?: string,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => Promise.reject(createNoSuchKeyError(key)), false);
+      addEntry(
+        () => Promise.reject(createNoSuchKeyError(key)),
+        false,
+        "rejectsWithNoSuchKey",
+      );
       return stub;
     },
     rejectsWithNoSuchBucket(
       bucket?: string,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => Promise.reject(createNoSuchBucketError(bucket)), false);
+      addEntry(
+        () => Promise.reject(createNoSuchBucketError(bucket)),
+        false,
+        "rejectsWithNoSuchBucket",
+      );
       return stub;
     },
     rejectsWithAccessDenied(
       resource?: string,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => Promise.reject(createAccessDeniedError(resource)), false);
+      addEntry(
+        () => Promise.reject(createAccessDeniedError(resource)),
+        false,
+        "rejectsWithAccessDenied",
+      );
       return stub;
     },
     rejectsWithResourceNotFound(
@@ -839,6 +943,7 @@ function createCommandStub<
       addEntry(
         () => Promise.reject(createResourceNotFoundError(resource)),
         false,
+        "rejectsWithResourceNotFound",
       );
       return stub;
     },
@@ -850,15 +955,24 @@ function createCommandStub<
       addEntry(
         () => Promise.reject(createConditionalCheckFailedError()),
         false,
+        "rejectsWithConditionalCheckFailed",
       );
       return stub;
     },
     rejectsWithThrottling(): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => Promise.reject(createThrottlingError()), false);
+      addEntry(
+        () => Promise.reject(createThrottlingError()),
+        false,
+        "rejectsWithThrottling",
+      );
       return stub;
     },
     rejectsWithInternalServerError(): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => Promise.reject(createInternalServerError()), false);
+      addEntry(
+        () => Promise.reject(createInternalServerError()),
+        false,
+        "rejectsWithInternalServerError",
+      );
       return stub;
     },
     resolvesPaginated<T = unknown>(
@@ -868,50 +982,77 @@ function createCommandStub<
       const responses = createPaginatedResponses(items, options);
       let currentIndex = 0;
 
-      addEntry((input) => {
-        const tokenKey = options.tokenKey || "NextToken";
-        const inputTokenKey = options.inputTokenKey || tokenKey;
-        const inputRecord = input as Record<string, unknown>;
-        // eslint-disable-next-line security/detect-object-injection -- Dynamic token key access required for AWS pagination handling
-        const inputToken = inputRecord[inputTokenKey] as string | undefined;
+      container.debugLogger.log(
+        `Configured resolvesPaginated for ${command.name}`,
+        { pageSize: options.pageSize, itemsCount: items.length },
+      );
 
-        if (inputToken) {
-          // Extract index from token
-          const tokenRegex = /token-(\d+)/;
-          const tokenMatch = tokenRegex.exec(inputToken);
-          if (tokenMatch && tokenMatch[1]) {
-            const tokenValue = tokenMatch[1];
-            currentIndex = Math.floor(
-              Number.parseInt(tokenValue, 10) / (options.pageSize || 10),
-            );
+      addEntry(
+        (input) => {
+          const tokenKey = options.tokenKey || "NextToken";
+          const inputTokenKey = options.inputTokenKey || tokenKey;
+          const inputRecord = input as Record<string, unknown>;
+          // eslint-disable-next-line security/detect-object-injection -- Dynamic token key access required for AWS pagination handling
+          const inputToken = inputRecord[inputTokenKey];
+
+          if (inputToken !== undefined && inputToken !== null) {
+            // Find which page has this token as its last item
+            const itemsKey = options.itemsKey || "Items";
+            let pageIndex = 0;
+            for (const response of responses) {
+              const responseRecord = response as Record<string, unknown>;
+              // eslint-disable-next-line security/detect-object-injection
+              const pageItems = responseRecord[itemsKey] as unknown[];
+              if (pageItems && pageItems.length > 0) {
+                // eslint-disable-next-line unicorn/prefer-at -- TypeScript target doesn't support Array.at() method
+                const lastItem = pageItems[pageItems.length - 1];
+
+                // Compare the token with the last item (deep equality check)
+                if (JSON.stringify(lastItem) === JSON.stringify(inputToken)) {
+                  currentIndex = pageIndex + 1;
+                  break;
+                }
+              }
+              pageIndex++;
+            }
+          } else {
+            currentIndex = 0;
           }
-        } else {
-          currentIndex = 0;
-        }
 
-        const response =
-          // eslint-disable-next-line security/detect-object-injection
-          responses[currentIndex] ||
-          // eslint-disable-next-line unicorn/prefer-at -- TypeScript target doesn't support Array.at() method
-          responses[responses.length - 1] ||
-          responses[0];
-        if (!response) {
-          throw new Error("No paginated responses available");
-        }
-        currentIndex = Math.min(currentIndex + 1, responses.length - 1);
+          const response =
+            // eslint-disable-next-line security/detect-object-injection
+            responses[currentIndex] ||
+            // eslint-disable-next-line unicorn/prefer-at -- TypeScript target doesn't support Array.at() method
+            responses[responses.length - 1] ||
+            responses[0];
+          if (!response) {
+            throw new Error("No paginated responses available");
+          }
+          currentIndex = Math.min(currentIndex + 1, responses.length - 1);
 
-        return Promise.resolve(response as unknown as TOutput);
-      }, false);
+          return Promise.resolve(response as unknown as TOutput);
+        },
+        false,
+        "resolvesPaginated",
+      );
 
       return stub;
     },
     resolvesFromFile(
       filePath: string,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => {
-        const data = loadFixture(filePath);
-        return Promise.resolve(data as TOutput);
-      }, false);
+      container.debugLogger.log(
+        `Configured resolvesFromFile for ${command.name}`,
+        { filePath },
+      );
+      addEntry(
+        () => {
+          const data = loadFixture(filePath);
+          return Promise.resolve(data as TOutput);
+        },
+        false,
+        "resolvesFromFile",
+      );
 
       return stub;
     },
@@ -979,10 +1120,13 @@ export const mockClient = <TClient extends AnyClient>(
         options,
       ),
     reset: (): void => {
+      mocksContainer.debugLogger.log("Clearing call history (mocks preserved)");
       sendSpy.mockClear();
-      mocksContainer.map = new WeakMap();
     },
     restore: (): void => {
+      mocksContainer.debugLogger.log(
+        "Restoring original client behavior and clearing all mocks",
+      );
       sendSpy.mockRestore();
       mocksContainer.map = new WeakMap();
     },
@@ -1056,10 +1200,15 @@ export const mockClientInstance = <TClient extends AnyClient>(
         options,
       ),
     reset: (): void => {
+      mocksContainer.debugLogger.log(
+        "Clearing call history (mocks preserved) for client instance",
+      );
       sendSpy.mockClear();
-      mocksContainer.map = new WeakMap();
     },
     restore: (): void => {
+      mocksContainer.debugLogger.log(
+        "Restoring original client behavior and clearing all mocks for client instance",
+      );
       sendSpy.mockRestore();
       mocksContainer.map = new WeakMap();
     },
