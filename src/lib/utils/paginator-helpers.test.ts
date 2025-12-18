@@ -27,12 +27,12 @@ describe("paginator-helpers", () => {
 
       expect(responses[0]).toEqual({
         Items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        NextToken: "token-10",
+        NextToken: 10, // Last item of the page
       });
 
       expect(responses[1]).toEqual({
         Items: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
-        NextToken: "token-20",
+        NextToken: 20, // Last item of the page
       });
 
       expect(responses[2]).toEqual({
@@ -49,7 +49,7 @@ describe("paginator-helpers", () => {
       });
 
       expect(responses).toHaveLength(2);
-      expect(responses[0].ContinuationToken).toBe("token-10");
+      expect(responses[0].ContinuationToken).toBe(10); // Last item
       expect(responses[0].NextToken).toBeUndefined();
     });
 
@@ -71,11 +71,11 @@ describe("paginator-helpers", () => {
       expect(responses).toHaveLength(3);
       expect(responses[0]).toEqual({
         Items: [1, 2],
-        NextToken: "token-2",
+        NextToken: 2, // Last item
       });
       expect(responses[1]).toEqual({
         Items: [3, 4],
-        NextToken: "token-4",
+        NextToken: 4, // Last item
       });
       expect(responses[2]).toEqual({
         Items: [5],
@@ -95,8 +95,8 @@ describe("paginator-helpers", () => {
 
       expect(responses).toHaveLength(2);
 
-      // First page has LastEvaluatedKey
-      expect(responses[0].LastEvaluatedKey).toBe("token-10");
+      // First page has LastEvaluatedKey as the last item (object)
+      expect(responses[0].LastEvaluatedKey).toEqual({ id: { S: "item-10" } });
       expect(responses[0].NextToken).toBeUndefined();
       expect(responses[0].Items).toHaveLength(10);
 
@@ -118,8 +118,54 @@ describe("paginator-helpers", () => {
 
       expect(responses).toHaveLength(2);
       expect(responses[0].Contents).toHaveLength(10);
-      expect(responses[0].NextContinuationToken).toBe("token-10");
+      expect(responses[0].NextContinuationToken).toEqual({
+        Key: "file-10.txt",
+      }); // Last item
       expect(responses[0].Items).toBeUndefined();
+    });
+
+    it("should use last item as token for all pagination types", () => {
+      // Tokens are always the last item of the page (works for DynamoDB, S3, etc.)
+      const items = Array.from({ length: 5 }, (_, index) => ({
+        id: { S: `item-${index + 1}` },
+      }));
+
+      const responses = createPaginatedResponses(items, {
+        pageSize: 2,
+        tokenKey: "LastEvaluatedKey",
+      });
+
+      expect(responses).toHaveLength(3);
+
+      // First page should have LastEvaluatedKey as an object (last item of the page)
+      expect(responses[0].Items).toHaveLength(2);
+      expect(responses[0].LastEvaluatedKey).toEqual({ id: { S: "item-2" } });
+      expect(typeof responses[0].LastEvaluatedKey).toBe("object");
+
+      // Second page
+      expect(responses[1].Items).toHaveLength(2);
+      expect(responses[1].LastEvaluatedKey).toEqual({ id: { S: "item-4" } });
+      expect(typeof responses[1].LastEvaluatedKey).toBe("object");
+
+      // Last page has no token
+      expect(responses[2].Items).toHaveLength(1);
+      expect(responses[2].LastEvaluatedKey).toBeUndefined();
+    });
+
+    it("should work with simple scalar items", () => {
+      const items = [1, 2, 3, 4, 5];
+
+      const responses = createPaginatedResponses(items, {
+        pageSize: 2,
+        tokenKey: "NextToken",
+      });
+
+      expect(responses).toHaveLength(3);
+
+      // Tokens are the last items (scalars in this case)
+      expect(responses[0].NextToken).toBe(2);
+      expect(responses[1].NextToken).toBe(4);
+      expect(responses[2].NextToken).toBeUndefined();
     });
   });
 });

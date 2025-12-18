@@ -10,7 +10,9 @@ import {
   PutObjectCommand,
   GetObjectCommandInput,
   GetObjectCommandOutput,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { expect, test, beforeEach, afterEach, describe, vi } from "vitest";
 import {
   mockClient,
@@ -121,7 +123,7 @@ describe("mockClient", () => {
     ).rejects.toThrow("String failure");
   });
 
-  test("reset should clear mocks and calls", async () => {
+  test("reset should clear calls but keep mocks", async () => {
     s3Mock.on(GetObjectCommand).resolves({
       Body: "before-reset" as unknown as GetObjectCommandOutput["Body"],
     });
@@ -135,9 +137,13 @@ describe("mockClient", () => {
     s3Mock.reset();
 
     expect(s3Mock.calls()).toHaveLength(0);
-    await expect(
-      client.send(new GetObjectCommand({ Bucket: "test", Key: "reset.txt" })),
-    ).rejects.toThrow("No mock configured for command: GetObjectCommand");
+
+    // Mock should still work after reset
+    const result = await client.send(
+      new GetObjectCommand({ Bucket: "test", Key: "reset.txt" }),
+    );
+    expect(result.Body).toBe("before-reset");
+    expect(s3Mock.calls()).toHaveLength(1);
   });
 
   test("should reject with error", async () => {
@@ -374,7 +380,7 @@ describe("mockClientInstance", () => {
     mock.restore();
   });
 
-  test("reset should clear instance mocks", async () => {
+  test("reset should clear instance calls but keep mocks", async () => {
     const clientInstance = new S3Client({});
     const mock = mockClientInstance(clientInstance);
 
@@ -390,11 +396,13 @@ describe("mockClientInstance", () => {
     mock.reset();
 
     expect(mock.calls()).toHaveLength(0);
-    await expect(
-      clientInstance.send(
-        new GetObjectCommand({ Bucket: "test", Key: "reset.txt" }),
-      ),
-    ).rejects.toThrow("No mock configured for command: GetObjectCommand");
+
+    // Mock should still work after reset
+    const result = await clientInstance.send(
+      new GetObjectCommand({ Bucket: "test", Key: "reset.txt" }),
+    );
+    expect(result.Body).toBe("before-reset");
+    expect(mock.calls()).toHaveLength(1);
 
     mock.restore();
   });
@@ -433,7 +441,7 @@ describe("strict matching", () => {
     const client = new S3Client({ region: "us-east-1" });
     await expect(
       client.send(new GetObjectCommand({ Bucket: "b", Key: "k" })),
-    ).rejects.toThrow("No mock configured for command: GetObjectCommand");
+    ).rejects.toThrow("No matching mock found for GetObjectCommand");
   });
 
   test("should match nested objects with strict: true", async () => {
@@ -484,7 +492,7 @@ describe("strict matching", () => {
           },
         }),
       ),
-    ).rejects.toThrow("No mock configured for command: PutObjectCommand");
+    ).rejects.toThrow("No matching mock found for PutObjectCommand");
   });
 
   test("should match identical reference objects with strict: true", async () => {
@@ -622,7 +630,7 @@ describe("multiple clients", () => {
     s3Mock.on(GetObjectCommand).resolves({
       Body: "s3-data" as unknown as GetObjectCommandOutput["Body"],
     });
-    ddbMock.on(GetItemCommand).resolves({ Item: { id: { S: "ddb-data" } } });
+    ddbMock.on(GetItemCommand).resolves({ Item: marshall({ id: "ddb-data" }) });
 
     const s3 = new S3Client({});
     const ddb = new DynamoDBClient({});
@@ -631,11 +639,11 @@ describe("multiple clients", () => {
       new GetObjectCommand({ Bucket: "b", Key: "k" }),
     );
     const ddbResponse = await ddb.send(
-      new GetItemCommand({ TableName: "t", Key: { id: { S: "1" } } }),
+      new GetItemCommand({ TableName: "t", Key: marshall({ id: "1" }) }),
     );
 
     expect(s3Response.Body).toBe("s3-data");
-    expect(ddbResponse.Item).toEqual({ id: { S: "ddb-data" } });
+    expect(ddbResponse.Item).toEqual(marshall({ id: "ddb-data" }));
 
     s3Mock.restore();
     ddbMock.restore();
@@ -1109,7 +1117,7 @@ describe("AWS Error Simulation", () => {
       dynamoClient.send(
         new GetItemCommand({
           TableName: "missing-table",
-          Key: { id: { S: "123" } },
+          Key: marshall({ id: "123" }),
         }),
       ),
     ).rejects.toMatchObject({
@@ -1126,7 +1134,7 @@ describe("AWS Error Simulation", () => {
       dynamoClient.send(
         new GetItemCommand({
           TableName: "test-table",
-          Key: { id: { S: "123" } },
+          Key: marshall({ id: "123" }),
         }),
       ),
     ).rejects.toMatchObject({
@@ -1296,9 +1304,9 @@ describe("Paginator Support", () => {
   });
 
   test("should simulate DynamoDB scan pagination", async () => {
-    const items = Array.from({ length: 25 }, (_, index) => ({
-      id: { S: `item-${index + 1}` },
-    }));
+    const items = Array.from({ length: 25 }, (_, index) =>
+      marshall({ id: `item-${index + 1}` }),
+    );
 
     dynamoMock.on(ScanCommand).resolvesPaginated(items, {
       pageSize: 10,
@@ -1315,9 +1323,7 @@ describe("Paginator Support", () => {
     );
 
     expect(result1.Items).toHaveLength(10);
-    expect((result1.Items as Array<{ id: { S: string } }>)[0]).toEqual({
-      id: { S: "item-1" },
-    });
+    expect(result1.Items?.[0]).toEqual(marshall({ id: "item-1" }));
     expect(result1.LastEvaluatedKey).toBeDefined();
 
     // Second page
@@ -1329,9 +1335,7 @@ describe("Paginator Support", () => {
     );
 
     expect(result2.Items).toHaveLength(10);
-    expect((result2.Items as Array<{ id: { S: string } }>)[0]).toEqual({
-      id: { S: "item-11" },
-    });
+    expect(result2.Items?.[0]).toEqual(marshall({ id: "item-11" }));
     expect(result2.LastEvaluatedKey).toBeDefined();
 
     // Third page
@@ -1343,9 +1347,7 @@ describe("Paginator Support", () => {
     );
 
     expect(result3.Items).toHaveLength(5);
-    expect((result3.Items as Array<{ id: { S: string } }>)[0]).toEqual({
-      id: { S: "item-21" },
-    });
+    expect(result3.Items?.[0]).toEqual(marshall({ id: "item-21" }));
     expect(result3.LastEvaluatedKey).toBeUndefined();
   });
 
@@ -1363,7 +1365,7 @@ describe("Paginator Support", () => {
   });
 
   test("should handle single page results", async () => {
-    const items = [{ id: { S: "1" } }, { id: { S: "2" } }];
+    const items = [marshall({ id: "item-1" }), marshall({ id: "item-2" })];
     dynamoMock.on(ScanCommand).resolvesPaginated(items, { pageSize: 10 });
 
     const result = await dynamoClient.send(
@@ -1378,9 +1380,9 @@ describe("Paginator Support", () => {
   });
 
   test("should handle pagination with custom token values", async () => {
-    const items = Array.from({ length: 3 }, (_, index) => ({
-      id: { S: `item-${index + 1}` },
-    }));
+    const items = Array.from({ length: 10 }, (_, index) =>
+      marshall({ id: `item-${index + 1}` }),
+    );
 
     dynamoMock.on(ScanCommand).resolvesPaginated(items, {
       pageSize: 1,
@@ -1406,6 +1408,214 @@ describe("Paginator Support", () => {
 
     expect(result2.Items).toHaveLength(1);
     expect(result2.LastEvaluatedKey).toBeDefined();
+  });
+
+  test("should return LastEvaluatedKey as object, not string", async () => {
+    const items = Array.from({ length: 3 }, (_, index) =>
+      marshall({ id: `item-${index + 1}` }),
+    );
+
+    dynamoMock.on(ScanCommand).resolvesPaginated(items, {
+      pageSize: 1,
+      tokenKey: "LastEvaluatedKey",
+      inputTokenKey: "ExclusiveStartKey",
+    });
+
+    const result1 = await dynamoClient.send(
+      new ScanCommand({
+        TableName: "test-table",
+      }),
+    );
+
+    // Verify LastEvaluatedKey is an object, not a string
+    expect(typeof result1.LastEvaluatedKey).toBe("object");
+    expect(result1.LastEvaluatedKey).not.toBeNull();
+    expect(typeof result1.LastEvaluatedKey).not.toBe("string");
+
+    // Verify it's the marshalled key of the last item (item-1)
+    expect(result1.LastEvaluatedKey).toEqual(marshall({ id: "item-1" }));
+
+    // Verify we can use it as ExclusiveStartKey to get the next page
+    const result2 = await dynamoClient.send(
+      new ScanCommand({
+        TableName: "test-table",
+        ExclusiveStartKey: result1.LastEvaluatedKey,
+      }),
+    );
+
+    expect(result2.Items).toHaveLength(1);
+    expect(result2.Items?.[0]).toEqual(marshall({ id: "item-2" }));
+    expect(typeof result2.LastEvaluatedKey).toBe("object");
+    expect(result2.LastEvaluatedKey).toEqual(marshall({ id: "item-2" }));
+  });
+
+  test("should support real-world DynamoDB pagination with unmarshall", async () => {
+    // Simulate a real DynamoDB table with user data
+    const users = [
+      { id: "user-1", name: "Alice", email: "alice@example.com", age: 30 },
+      { id: "user-2", name: "Bob", email: "bob@example.com", age: 25 },
+      { id: "user-3", name: "Charlie", email: "charlie@example.com", age: 35 },
+      { id: "user-4", name: "Diana", email: "diana@example.com", age: 28 },
+      { id: "user-5", name: "Eve", email: "eve@example.com", age: 32 },
+    ];
+
+    // Marshall the items (as they would be stored in DynamoDB)
+    const marshalledItems = users.map((user) => marshall(user));
+
+    dynamoMock.on(ScanCommand).resolvesPaginated(marshalledItems, {
+      pageSize: 2,
+      itemsKey: "Items",
+      tokenKey: "LastEvaluatedKey",
+      inputTokenKey: "ExclusiveStartKey",
+    });
+
+    // Page 1: Get first 2 users
+    const page1 = await dynamoClient.send(
+      new ScanCommand({
+        TableName: "Users",
+        Limit: 2,
+      }),
+    );
+
+    expect(page1.Items).toHaveLength(2);
+    expect(page1.LastEvaluatedKey).toBeDefined();
+
+    // Unmarshall the items to get plain JavaScript objects
+    const page1Users = page1.Items?.map((item) => unmarshall(item)) ?? [];
+    expect(page1Users[0]).toEqual(users[0]);
+    expect(page1Users[1]).toEqual(users[1]);
+
+    // Verify LastEvaluatedKey is the marshalled last item
+    expect(page1.LastEvaluatedKey).toEqual(marshalledItems[1]);
+
+    // Page 2: Use LastEvaluatedKey to get next page
+    const page2 = await dynamoClient.send(
+      new ScanCommand({
+        TableName: "Users",
+        ExclusiveStartKey: page1.LastEvaluatedKey,
+        Limit: 2,
+      }),
+    );
+
+    expect(page2.Items).toHaveLength(2);
+    expect(page2.LastEvaluatedKey).toBeDefined();
+
+    const page2Users = page2.Items?.map((item) => unmarshall(item)) ?? [];
+    expect(page2Users[0]).toEqual(users[2]);
+    expect(page2Users[1]).toEqual(users[3]);
+
+    // Verify LastEvaluatedKey is an object (marshalled key)
+    expect(typeof page2.LastEvaluatedKey).toBe("object");
+    expect(page2.LastEvaluatedKey).toEqual(marshalledItems[3]);
+
+    // Page 3: Get final page
+    const page3 = await dynamoClient.send(
+      new ScanCommand({
+        TableName: "Users",
+        ExclusiveStartKey: page2.LastEvaluatedKey,
+        Limit: 2,
+      }),
+    );
+
+    expect(page3.Items).toHaveLength(1);
+    expect(page3.LastEvaluatedKey).toBeUndefined(); // No more pages
+
+    const page3Users = page3.Items?.map((item) => unmarshall(item)) ?? [];
+    expect(page3Users[0]).toEqual(users[4]);
+
+    // Verify we got all users across all pages
+    const allUsers = [...page1Users, ...page2Users, ...page3Users];
+    expect(allUsers).toEqual(users);
+  });
+
+  test("should handle DynamoDB Query with composite keys", async () => {
+    // Simulate a table with partition key (userId) and sort key (timestamp)
+    const messages = [
+      { userId: "user-1", timestamp: 1000, message: "Hello" },
+      { userId: "user-1", timestamp: 2000, message: "World" },
+      { userId: "user-1", timestamp: 3000, message: "Test" },
+    ];
+
+    const marshalledMessages = messages.map((message) => marshall(message));
+
+    dynamoMock.on(ScanCommand).resolvesPaginated(marshalledMessages, {
+      pageSize: 1,
+      tokenKey: "LastEvaluatedKey",
+      inputTokenKey: "ExclusiveStartKey",
+    });
+
+    const page1 = await dynamoClient.send(
+      new ScanCommand({ TableName: "Messages" }),
+    );
+
+    // LastEvaluatedKey should contain both partition and sort key
+    expect(page1.LastEvaluatedKey).toEqual(marshalledMessages[0]);
+    expect(page1.LastEvaluatedKey).toHaveProperty("userId");
+    expect(page1.LastEvaluatedKey).toHaveProperty("timestamp");
+    expect(page1.LastEvaluatedKey).toHaveProperty("message");
+
+    // Can unmarshall the key
+    const lastKey = page1.LastEvaluatedKey
+      ? unmarshall(page1.LastEvaluatedKey)
+      : {};
+    expect(lastKey).toEqual(messages[0]);
+  });
+
+  test("should support real-world S3 ListObjectsV2 pagination", async () => {
+    const s3Mock = mockClient(S3Client);
+    const s3Client = new S3Client({});
+
+    // Simulate S3 objects in a bucket
+    const objects = Array.from({ length: 100 }, (_, index) => ({
+      Key: `photos/2024/photo-${String(index + 1).padStart(3, "0")}.jpg`,
+      Size: Math.floor(Math.random() * 1_000_000) + 100_000,
+      LastModified: new Date(`2024-01-${(index % 30) + 1}`),
+      ETag: `"etag-${index + 1}"`,
+    }));
+
+    s3Mock.on(ListObjectsV2Command).resolvesPaginated(objects, {
+      pageSize: 50,
+      itemsKey: "Contents",
+      tokenKey: "NextContinuationToken",
+      inputTokenKey: "ContinuationToken",
+    });
+
+    // Page 1: Get first 50 objects
+    const page1 = await s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: "my-photos",
+        MaxKeys: 50,
+      }),
+    );
+
+    expect(page1.Contents).toHaveLength(50);
+    expect(page1.NextContinuationToken).toBeDefined();
+    expect(page1.Contents?.[0]?.Key).toBe("photos/2024/photo-001.jpg");
+    expect(page1.Contents?.[49]?.Key).toBe("photos/2024/photo-050.jpg");
+
+    // NextContinuationToken is the last object from page 1
+    expect(page1.NextContinuationToken).toEqual(objects[49]);
+
+    // Page 2: Use ContinuationToken to get next page
+    const page2 = await s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: "my-photos",
+        ContinuationToken: page1.NextContinuationToken,
+        MaxKeys: 50,
+      }),
+    );
+
+    expect(page2.Contents).toHaveLength(50);
+    expect(page2.Contents?.[0]?.Key).toBe("photos/2024/photo-051.jpg");
+    expect(page2.Contents?.[49]?.Key).toBe("photos/2024/photo-100.jpg");
+    expect(page2.NextContinuationToken).toBeUndefined(); // No more pages
+
+    // Verify we got all objects
+    const allObjects = [...(page1.Contents ?? []), ...(page2.Contents ?? [])];
+    expect(allObjects).toHaveLength(100);
+    expect(allObjects.map((o) => o.Key)).toEqual(objects.map((o) => o.Key));
+
+    s3Mock.restore();
   });
 });
 
@@ -1454,15 +1664,113 @@ describe("Debug Mode", () => {
       }),
     );
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "[aws-sdk-vitest-mock](Debug) Received command: GetObjectCommand",
-      { Bucket: "test-bucket", Key: "test-key" },
+    // Check that configuration was logged
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const configCall = consoleSpy.mock.calls.find(
+      (call: unknown[]) =>
+        typeof call[0] === "string" &&
+        call[0].includes("Configured resolves for GetObjectCommand"),
     );
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "[aws-sdk-vitest-mock](Debug) Found 1 mock(s) for GetObjectCommand",
+    expect(configCall).toBeDefined();
+
+    // Check that the command received log includes the full object
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const commandLog = consoleSpy.mock.calls.find(
+      (call: unknown[]) =>
+        typeof call[0] === "string" &&
+        call[0].includes("Received command: GetObjectCommand"),
     );
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "[aws-sdk-vitest-mock](Debug) Using mock at index 0 for GetObjectCommand",
+    expect(commandLog).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const commandLogText = String(commandLog?.[0] ?? "");
+    expect(commandLogText).toContain('"Bucket"');
+    expect(commandLogText).toContain('"test-bucket"');
+    expect(commandLogText).toContain('"Key"');
+    expect(commandLogText).toContain('"test-key"');
+
+    // Check that mock was found and used
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const foundCall = consoleSpy.mock.calls.find(
+      (call: unknown[]) =>
+        typeof call[0] === "string" &&
+        call[0].includes("Found 1 mock(s) for GetObjectCommand"),
+    );
+    expect(foundCall).toBeDefined();
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const usingCall = consoleSpy.mock.calls.find(
+      (call: unknown[]) =>
+        typeof call[0] === "string" &&
+        call[0].includes("Using mock at index 0 for GetObjectCommand"),
+    );
+    expect(usingCall).toBeDefined();
+  });
+
+  test("should log mock configuration", () => {
+    s3Mock.enableDebug();
+
+    s3Mock
+      .on(GetObjectCommand, { Bucket: "test-bucket" })
+      .resolves({ Body: "test" as unknown as GetObjectCommandOutput["Body"] });
+
+    // Check that the configuration log includes the full matcher details
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const firstCall = consoleSpy.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const configLog = String(firstCall?.[0] ?? "");
+    expect(configLog).toContain("Configured resolves for GetObjectCommand");
+    expect(configLog).toContain('"Bucket"');
+    expect(configLog).toContain('"test-bucket"');
+    expect(configLog).toContain('"strict"');
+    expect(configLog).toContain("false");
+  });
+
+  test("should log resolvesOnce configuration", () => {
+    s3Mock.enableDebug();
+
+    s3Mock.on(GetObjectCommand).resolvesOnce({
+      Body: "once" as unknown as GetObjectCommandOutput["Body"],
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const call = consoleSpy.mock.calls[0]?.[0] as string;
+    expect(call).toContain("aws-sdk-vitest-mock(debug):");
+    expect(call).toContain("Configured resolvesOnce for GetObjectCommand");
+  });
+
+  test("should log rejects configuration", () => {
+    s3Mock.enableDebug();
+
+    s3Mock.on(GetObjectCommand).rejects(new Error("test error"));
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const call = consoleSpy.mock.calls[0]?.[0] as string;
+    expect(call).toContain("aws-sdk-vitest-mock(debug):");
+    expect(call).toContain("Configured rejects for GetObjectCommand");
+  });
+
+  test("should log reset operation", () => {
+    s3Mock.enableDebug();
+
+    s3Mock.reset();
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const call = consoleSpy.mock.calls[0]?.[0] as string;
+    expect(call).toContain("aws-sdk-vitest-mock(debug):");
+    expect(call).toContain("Clearing call history (mocks preserved)");
+  });
+
+  test("should log restore operation", () => {
+    s3Mock.enableDebug();
+
+    s3Mock.restore();
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const call = consoleSpy.mock.calls[0]?.[0] as string;
+    expect(call).toContain("aws-sdk-vitest-mock(debug):");
+    expect(call).toContain(
+      "Restoring original client behavior and clearing all mocks",
     );
   });
 
@@ -1497,20 +1805,42 @@ describe("Debug Mode", () => {
       ),
     ).rejects.toThrow();
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "[aws-sdk-vitest-mock](Debug) Found 1 mock(s) for GetObjectCommand",
+    // Check that mocks were found
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const foundCall = consoleSpy.mock.calls.find(
+      (call: unknown[]) =>
+        typeof call[0] === "string" &&
+        call[0].includes("Found 1 mock(s) for GetObjectCommand"),
     );
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "[aws-sdk-vitest-mock](Debug) No matching mock found for GetObjectCommand",
-      { Bucket: "test-bucket", Key: "test-key" },
+    expect(foundCall).toBeDefined();
+
+    // Check that the no matching mock log includes the full object
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const noMatchLog = consoleSpy.mock.calls.find(
+      (call: unknown[]) =>
+        typeof call[0] === "string" &&
+        call[0].includes("No matching mock found for GetObjectCommand"),
     );
+    expect(noMatchLog).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const noMatchLogText = String(noMatchLog?.[0] ?? "");
+    expect(noMatchLogText).toContain('"Bucket"');
+    expect(noMatchLogText).toContain('"test-bucket"');
+    expect(noMatchLogText).toContain('"Key"');
+    expect(noMatchLogText).toContain('"test-key"');
   });
 
   test("should log when one-time mock is removed", async () => {
     s3Mock.enableDebug();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    consoleSpy.mockClear(); // Clear the configuration log
+
     s3Mock.on(GetObjectCommand).resolvesOnce({
       Body: "once" as unknown as GetObjectCommandOutput["Body"],
     });
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    consoleSpy.mockClear(); // Clear the configuration log before sending
 
     await s3Client.send(
       new GetObjectCommand({
@@ -1519,9 +1849,14 @@ describe("Debug Mode", () => {
       }),
     );
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "[aws-sdk-vitest-mock](Debug) Removed one-time mock for GetObjectCommand",
+    // Check that one-time mock removal was logged
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const removeCall = consoleSpy.mock.calls.find(
+      (call: unknown[]) =>
+        typeof call[0] === "string" &&
+        call[0].includes("Removed one-time mock for GetObjectCommand"),
     );
+    expect(removeCall).toBeDefined();
   });
 
   test("should stop logging when debug is disabled", async () => {
