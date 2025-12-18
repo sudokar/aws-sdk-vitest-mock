@@ -650,6 +650,8 @@ test("should call DynamoDB", async () => {
 
 ## 📚 API Reference
 
+> TypeScript documentation for this library can be found at [here](https://sudokar.github.io/aws-sdk-vitest-mock/)
+
 ### `mockClient<TClient>(ClientConstructor)`
 
 Creates a mock for an AWS SDK client constructor.
