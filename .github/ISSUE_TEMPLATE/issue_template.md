@@ -36,14 +36,6 @@ Describe what you expected to happen instead.
 
 Describe the desired solution or new functionality. Include API shape, example usage, and how it benefits consumers.
 
-## Tests and Commands
-
-List any commands you ran before or after encountering the issue. Prefer Nx commands where possible.
-
-- [ ] `bun run nx lint`
-- [ ] `bun run nx test`
-- [ ] `bun run nx build`
-
 ## Environment
 
 - OS:

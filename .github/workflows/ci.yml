@@ -17,7 +17,7 @@ jobs:
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      - run: bun install
+      - run: bun run ci
       - run: bun run nx lint
       - run: bun run nx test
       - run: bun run nx build
