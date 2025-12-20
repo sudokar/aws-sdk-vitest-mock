@@ -564,6 +564,46 @@ s3Mock.restore();
 s3Mock.disableDebug();
 ```
 
+#### Global Debug Configuration
+
+Enable debug logging for all mocks globally, with the ability to override at the individual mock level:
+
+```typescript
+import { setGlobalDebug, mockClient } from "aws-sdk-vitest-mock";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
+
+// Enable debug for all mocks
+setGlobalDebug(true);
+
+// All mocks will inherit the global debug setting
+const s3Mock = mockClient(S3Client);
+const dynamoMock = mockClient(DynamoDBClient);
+
+// Both mocks will log debug information
+s3Mock.on(GetObjectCommand).resolves({ Body: "data" });
+dynamoMock.on(GetItemCommand).resolves({ Item: { id: { S: "1" } } });
+
+// Override global setting for a specific mock
+s3Mock.disableDebug(); // This mock won't log, but dynamoMock still will
+
+// Disable global debug
+setGlobalDebug(false);
+```
+
+**Debug Priority (highest to lowest):**
+
+1. Individual mock's `enableDebug()` or `disableDebug()` call (explicit override)
+2. Global debug setting via `setGlobalDebug()`
+3. Default: disabled
+
+**Key behaviors:**
+
+- When global debug is enabled, all new and existing mocks will log unless explicitly disabled
+- Individual mock settings always take priority over global settings
+- `reset()` preserves individual debug settings
+- Global debug can be changed at any time and affects all mocks without explicit settings
+
 Debug mode provides comprehensive logging for:
 
 **Mock Configuration:**
@@ -664,14 +704,18 @@ Mocks an existing AWS SDK client instance.
 
 **Returns:** `AwsClientStub<TClient>`
 
+### Global Debug Functions
+
+- `setGlobalDebug(enabled: boolean)` - Enable or disable debug logging globally for all mocks
+
 ### `AwsClientStub` Methods
 
 - `on(Command, matcher?, options?)` - Configure mock for a command
 - `reset()` - Clear call history while preserving mock configurations
 - `restore()` - Restore original client behavior
 - `calls()` - Get call history
-- `enableDebug()` - Enable debug logging for troubleshooting
-- `disableDebug()` - Disable debug logging
+- `enableDebug()` - Enable debug logging for troubleshooting (overrides global setting)
+- `disableDebug()` - Disable debug logging (overrides global setting)
 
 ### `AwsCommandStub` Methods (Chainable)
 

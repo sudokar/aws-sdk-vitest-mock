@@ -26,6 +26,47 @@ import {
 } from "./utils/paginator-helpers.js";
 import { createStream, type StreamInput } from "./utils/stream-helpers.js";
 
+// Global debug state
+let globalDebugEnabled = false;
+
+/**
+ * Set global debug mode for all mocks.
+ * When enabled, all mocks will log debug information unless explicitly disabled at the mock level.
+ *
+ * @param enabled - Whether to enable debug logging globally
+ *
+ * @example
+ * ```typescript
+ * import { setGlobalDebug, mockClient } from 'aws-sdk-vitest-mock';
+ * import { S3Client } from '@aws-sdk/client-s3';
+ *
+ * // Enable debug for all mocks
+ * setGlobalDebug(true);
+ *
+ * const s3Mock = mockClient(S3Client); // Automatically has debug enabled
+ *
+ * // Disable debug for a specific mock
+ * s3Mock.disableDebug(); // This mock won't log, but others will
+ * ```
+ */
+export function setGlobalDebug(enabled: boolean): void {
+  globalDebugEnabled = enabled;
+}
+
+/**
+ * Determine the effective debug state for a logger.
+ * Individual explicit settings take priority over global settings.
+ *
+ * @param logger - The debug logger to check
+ * @returns Whether debug should be enabled
+ */
+function getEffectiveDebugState(logger: DebugLogger): boolean {
+  if (logger.explicitlySet) {
+    return logger.enabled; // Explicit individual setting wins
+  }
+  return globalDebugEnabled; // Fall back to global setting
+}
+
 // Use the Smithy Command type so we can preserve concrete input/output when mocking.
 export type StructuralCommand<
   TInput extends object,
@@ -664,6 +705,50 @@ type MocksContainer = {
   debugLogger: DebugLogger;
 };
 
+function buildNoMatchError(
+  commandName: string,
+  mocks: MockEntry[],
+  input: object,
+): Error {
+  const matchers = mocks
+    .map((mock, index) => {
+      const matcherStr = mock.matcher
+        ? JSON.stringify(mock.matcher, undefined, 2)
+        : "any input";
+      const strictStr = mock.strict ? " (strict mode)" : "";
+      return `  Mock #${index + 1}: ${matcherStr}${strictStr}`;
+    })
+    .join("\n");
+
+  const receivedStr = JSON.stringify(input, undefined, 2);
+
+  return new Error(
+    `No matching mock found for ${commandName}.\n\n` +
+      `Found ${mocks.length} mock(s) but none matched the input.\n\n` +
+      `Configured mocks:\n${matchers}\n\n` +
+      `Received input:\n${receivedStr}\n\n` +
+      `Tip: Enable debug mode with enableDebug() for detailed matching information.`,
+  );
+}
+
+function buildNoMockError(commandName: string, input: object): Error {
+  const receivedStr = JSON.stringify(input, undefined, 2);
+  return new Error(
+    `No mock configured for command: ${commandName}.\n\n` +
+      `Received input:\n${receivedStr}\n\n` +
+      `Did you forget to call mockClient.on(${commandName})?`,
+  );
+}
+
+function findMatchingMock(mocks: MockEntry[], input: object): number {
+  return mocks.findIndex((mock) => {
+    const isMatch = mock.strict
+      ? mock.matcher && matchesStrict(input, mock.matcher)
+      : !mock.matcher || matchesPartial(input, mock.matcher);
+    return isMatch;
+  });
+}
+
 function createMockImplementation(
   container: MocksContainer,
 ): (this: AnyClient, command: AwsSdkCommand) => Promise<MetadataBearer> {
@@ -672,87 +757,69 @@ function createMockImplementation(
     command: AwsSdkCommand,
   ): Promise<MetadataBearer> {
     const getClient = (): AnyClient => this;
+    const shouldLog = getEffectiveDebugState(container.debugLogger);
+    const commandName = command.constructor.name;
 
-    container.debugLogger.log(
-      `Received command: ${command.constructor.name}`,
-      command.input,
-    );
+    if (shouldLog) {
+      container.debugLogger.logDirect(
+        `Received command: ${commandName}`,
+        command.input,
+      );
+    }
 
     const mocks = container.map.get(
       command.constructor as AwsCommandConstructor,
     );
-    if (mocks) {
-      container.debugLogger.log(
-        `Found ${mocks.length} mock(s) for ${command.constructor.name}`,
-      );
 
-      const matchingIndex = mocks.findIndex((mock) => {
-        const isMatch = mock.strict
-          ? mock.matcher && matchesStrict(command.input, mock.matcher)
-          : !mock.matcher || matchesPartial(command.input, mock.matcher);
-        return isMatch;
-      });
-
-      if (matchingIndex === -1) {
-        container.debugLogger.log(
-          `No matching mock found for ${command.constructor.name}`,
-          command.input,
+    if (!mocks) {
+      if (shouldLog) {
+        container.debugLogger.logDirect(
+          `No mocks configured for ${commandName}`,
         );
-
-        // Build detailed error message for no matching mock
-        const matchers = mocks
-          .map((mock, index) => {
-            const matcherStr = mock.matcher
-              ? JSON.stringify(mock.matcher, undefined, 2)
-              : "any input";
-            const strictStr = mock.strict ? " (strict mode)" : "";
-            return `  Mock #${index + 1}: ${matcherStr}${strictStr}`;
-          })
-          .join("\n");
-
-        const receivedStr = JSON.stringify(command.input, undefined, 2);
-
-        throw new Error(
-          `No matching mock found for ${command.constructor.name}.\n\n` +
-            `Found ${mocks.length} mock(s) but none matched the input.\n\n` +
-            `Configured mocks:\n${matchers}\n\n` +
-            `Received input:\n${receivedStr}\n\n` +
-            `Tip: Enable debug mode with enableDebug() for detailed matching information.`,
-        );
-      } else {
-        // eslint-disable-next-line security/detect-object-injection -- Array access with validated index for mock retrieval
-        const mock = mocks[matchingIndex];
-        if (!mock) {
-          throw new Error(`Mock at index ${matchingIndex} not found`);
-        }
-        container.debugLogger.log(
-          `Using mock at index ${matchingIndex} for ${command.constructor.name}`,
-        );
-
-        if (mock.once) {
-          mocks.splice(matchingIndex, 1);
-          container.debugLogger.log(
-            `Removed one-time mock for ${command.constructor.name}`,
-          );
-        }
-        return mock.handler(
-          command.input,
-          getClient(),
-        ) as Promise<MetadataBearer>;
       }
-    } else {
-      container.debugLogger.log(
-        `No mocks configured for ${command.constructor.name}`,
+      throw buildNoMockError(commandName, command.input);
+    }
+
+    if (shouldLog) {
+      container.debugLogger.logDirect(
+        `Found ${mocks.length} mock(s) for ${commandName}`,
       );
     }
 
-    // No mocks configured at all for this command
-    const receivedStr = JSON.stringify(command.input, undefined, 2);
-    throw new Error(
-      `No mock configured for command: ${command.constructor.name}.\n\n` +
-        `Received input:\n${receivedStr}\n\n` +
-        `Did you forget to call mockClient.on(${command.constructor.name})?`,
-    );
+    const matchingIndex = findMatchingMock(mocks, command.input);
+
+    if (matchingIndex === -1) {
+      if (shouldLog) {
+        container.debugLogger.logDirect(
+          `No matching mock found for ${commandName}`,
+          command.input,
+        );
+      }
+      throw buildNoMatchError(commandName, mocks, command.input);
+    }
+
+    // eslint-disable-next-line security/detect-object-injection -- Array access with validated index for mock retrieval
+    const mock = mocks[matchingIndex];
+    if (!mock) {
+      throw new Error(`Mock at index ${matchingIndex} not found`);
+    }
+
+    if (shouldLog) {
+      container.debugLogger.logDirect(
+        `Using mock at index ${matchingIndex} for ${commandName}`,
+      );
+    }
+
+    if (mock.once) {
+      mocks.splice(matchingIndex, 1);
+      if (shouldLog) {
+        container.debugLogger.logDirect(
+          `Removed one-time mock for ${commandName}`,
+        );
+      }
+    }
+
+    return mock.handler(command.input, getClient()) as Promise<MetadataBearer>;
   };
 }
 
@@ -782,6 +849,8 @@ function createCommandStub<
     const existingMocks =
       container.map.get(command as unknown as AwsCommandConstructor) ?? [];
 
+    const shouldLog = getEffectiveDebugState(container.debugLogger);
+
     if (once) {
       // Insert "once" handlers before permanent handlers
       const permanentIndex = existingMocks.findIndex((m) => !m.once);
@@ -794,10 +863,12 @@ function createCommandStub<
         command as unknown as AwsCommandConstructor,
         existingMocks,
       );
-      container.debugLogger.log(
-        `Configured ${handlerType}Once for ${command.name}`,
-        matcher ? { matcher, strict: !!options.strict } : undefined,
-      );
+      if (shouldLog) {
+        container.debugLogger.logDirect(
+          `Configured ${handlerType}Once for ${command.name}`,
+          matcher ? { matcher, strict: !!options.strict } : undefined,
+        );
+      }
     } else {
       // Permanent handlers replace any existing permanent handler for same matcher
       const filteredMocks = existingMocks.filter(
@@ -808,10 +879,12 @@ function createCommandStub<
         command as unknown as AwsCommandConstructor,
         filteredMocks,
       );
-      container.debugLogger.log(
-        `Configured ${handlerType} for ${command.name}`,
-        matcher ? { matcher, strict: !!options.strict } : undefined,
-      );
+      if (shouldLog) {
+        container.debugLogger.logDirect(
+          `Configured ${handlerType} for ${command.name}`,
+          matcher ? { matcher, strict: !!options.strict } : undefined,
+        );
+      }
     }
   };
 
@@ -1120,13 +1193,21 @@ export const mockClient = <TClient extends AnyClient>(
         options,
       ),
     reset: (): void => {
-      mocksContainer.debugLogger.log("Clearing call history (mocks preserved)");
+      const shouldLog = getEffectiveDebugState(mocksContainer.debugLogger);
+      if (shouldLog) {
+        mocksContainer.debugLogger.logDirect(
+          "Clearing call history (mocks preserved)",
+        );
+      }
       sendSpy.mockClear();
     },
     restore: (): void => {
-      mocksContainer.debugLogger.log(
-        "Restoring original client behavior and clearing all mocks",
-      );
+      const shouldLog = getEffectiveDebugState(mocksContainer.debugLogger);
+      if (shouldLog) {
+        mocksContainer.debugLogger.logDirect(
+          "Restoring original client behavior and clearing all mocks",
+        );
+      }
       sendSpy.mockRestore();
       mocksContainer.map = new WeakMap();
     },
@@ -1200,15 +1281,21 @@ export const mockClientInstance = <TClient extends AnyClient>(
         options,
       ),
     reset: (): void => {
-      mocksContainer.debugLogger.log(
-        "Clearing call history (mocks preserved) for client instance",
-      );
+      const shouldLog = getEffectiveDebugState(mocksContainer.debugLogger);
+      if (shouldLog) {
+        mocksContainer.debugLogger.logDirect(
+          "Clearing call history (mocks preserved) for client instance",
+        );
+      }
       sendSpy.mockClear();
     },
     restore: (): void => {
-      mocksContainer.debugLogger.log(
-        "Restoring original client behavior and clearing all mocks for client instance",
-      );
+      const shouldLog = getEffectiveDebugState(mocksContainer.debugLogger);
+      if (shouldLog) {
+        mocksContainer.debugLogger.logDirect(
+          "Restoring original client behavior and clearing all mocks for client instance",
+        );
+      }
       sendSpy.mockRestore();
       mocksContainer.map = new WeakMap();
     },
