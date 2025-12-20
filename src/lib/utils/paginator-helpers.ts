@@ -100,10 +100,10 @@ export interface PaginatedResponse<T = unknown> {
  * // ]
  * ```
  */
-export function createPaginatedResponses<T>(
+export const createPaginatedResponses = <T>(
   items: T[],
   options: PaginatorOptions = {},
-): PaginatedResponse<T>[] {
+): PaginatedResponse<T>[] => {
   const { pageSize = 10, tokenKey = "NextToken", itemsKey = "Items" } = options;
 
   if (items.length === 0) {
@@ -132,4 +132,4 @@ export function createPaginatedResponses<T>(
   }
 
   return responses;
-}
+};
