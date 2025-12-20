@@ -15,7 +15,7 @@ export class AwsError extends Error {
     retryable?: boolean,
   ) {
     super(message);
-    this.name = "AwsError";
+    this.name = "AwsError" as const;
     this.code = code;
     this.statusCode = statusCode;
     this.retryable = retryable;
@@ -23,34 +23,44 @@ export class AwsError extends Error {
 }
 
 // S3 Errors
-export const createNoSuchKeyError = (key?: string): AwsError => {
-  const message = key
-    ? `The specified key does not exist. Key: ${key}`
-    : "The specified key does not exist.";
-  return new AwsError(message, "NoSuchKey", 404, false);
-};
+export const createNoSuchKeyError = (key?: string): AwsError =>
+  new AwsError(
+    key
+      ? `The specified key does not exist. Key: ${key}`
+      : "The specified key does not exist.",
+    "NoSuchKey",
+    404,
+    false,
+  );
 
-export const createNoSuchBucketError = (bucket?: string): AwsError => {
-  const message = bucket
-    ? `The specified bucket does not exist. Bucket: ${bucket}`
-    : "The specified bucket does not exist.";
-  return new AwsError(message, "NoSuchBucket", 404, false);
-};
+export const createNoSuchBucketError = (bucket?: string): AwsError =>
+  new AwsError(
+    bucket
+      ? `The specified bucket does not exist. Bucket: ${bucket}`
+      : "The specified bucket does not exist.",
+    "NoSuchBucket",
+    404,
+    false,
+  );
 
-export const createAccessDeniedError = (resource?: string): AwsError => {
-  const message = resource
-    ? `Access Denied for resource: ${resource}`
-    : "Access Denied";
-  return new AwsError(message, "AccessDenied", 403, false);
-};
+export const createAccessDeniedError = (resource?: string): AwsError =>
+  new AwsError(
+    resource ? `Access Denied for resource: ${resource}` : "Access Denied",
+    "AccessDenied",
+    403,
+    false,
+  );
 
 // DynamoDB Errors
-export const createResourceNotFoundError = (resource?: string): AwsError => {
-  const message = resource
-    ? `Requested resource not found: ${resource}`
-    : "Requested resource not found";
-  return new AwsError(message, "ResourceNotFoundException", 400, false);
-};
+export const createResourceNotFoundError = (resource?: string): AwsError =>
+  new AwsError(
+    resource
+      ? `Requested resource not found: ${resource}`
+      : "Requested resource not found",
+    "ResourceNotFoundException",
+    400,
+    false,
+  );
 
 export const createConditionalCheckFailedError = (): AwsError =>
   new AwsError(

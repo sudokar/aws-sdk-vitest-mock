@@ -19,13 +19,11 @@ type ReceivedCall = readonly [
 const getCommandCalls = (stub: AwsClientStub): ReceivedCall[] => {
   const rawCalls = stub.__rawCalls() as unknown;
 
-  if (!Array.isArray(rawCalls)) {
-    return [];
-  }
-
-  return rawCalls.filter(
-    (call): call is ReceivedCall => Array.isArray(call) && call.length > 0,
-  );
+  return Array.isArray(rawCalls)
+    ? rawCalls.filter(
+        (call): call is ReceivedCall => Array.isArray(call) && call.length > 0,
+      )
+    : [];
 };
 
 /**
@@ -64,19 +62,19 @@ export const matchers = {
     command: CommandConstructor<TInput, TOutput>,
   ): MatcherResult {
     const calls = getCommandCalls(received);
-    const pass = calls.some((call) => call[0] instanceof command);
+    const pass = calls.some(([cmd]) => cmd instanceof command);
     const commandName = command.name;
 
     return {
       pass,
-      message: (): string => {
+      message: () => {
         if (pass) {
           return `Expected AWS SDK mock not to have received command ${colors.red(commandName)}`;
         }
 
-        const receivedCommands = calls.map((call) => {
-          const cmd = call[0] as { constructor?: { name?: string } };
-          return cmd.constructor?.name ?? "Unknown";
+        const receivedCommands = calls.map(([cmd]) => {
+          const command = cmd as { constructor?: { name?: string } };
+          return command.constructor?.name ?? "Unknown";
         });
 
         if (receivedCommands.length === 0) {
