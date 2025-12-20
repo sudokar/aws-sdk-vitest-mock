@@ -2,7 +2,9 @@ import { colors } from "./colors.js";
 
 export interface DebugLogger {
   enabled: boolean;
+  explicitlySet: boolean;
   log: (message: string, data?: unknown) => void;
+  logDirect: (message: string, data?: unknown) => void;
 }
 
 /**
@@ -27,27 +29,38 @@ const formatData = (data: unknown): string => {
   }
 };
 
-export const createDebugLogger = (): DebugLogger => ({
-  enabled: false,
-  log(this: DebugLogger, message: string, data?: unknown): void {
-    if (!this.enabled) return;
+const logImpl = (message: string, data?: unknown): void => {
+  const prefix = colors.magenta("aws-sdk-vitest-mock(debug):");
 
-    const prefix = colors.magenta("aws-sdk-vitest-mock(debug):");
+  if (data === undefined) {
+    console.log(`${prefix} ${message}`);
+  } else {
+    // Format data with full depth to avoid [Object] truncation
+    const formatted = formatData(data);
+    console.log(`${prefix} ${message}\n${formatted}`);
+  }
+};
 
-    if (data === undefined) {
-      console.log(`${prefix} ${message}`);
-    } else {
-      // Format data with full depth to avoid [Object] truncation
-      const formatted = formatData(data);
-      console.log(`${prefix} ${message}\n${formatted}`);
-    }
-  },
-});
+export const createDebugLogger = (initialEnabled = false): DebugLogger => {
+  return {
+    enabled: initialEnabled,
+    explicitlySet: false,
+    log(this: DebugLogger, message: string, data?: unknown): void {
+      if (!this.enabled) return;
+      logImpl(message, data);
+    },
+    logDirect(message: string, data?: unknown): void {
+      logImpl(message, data);
+    },
+  };
+};
 
 export const enableDebug = (logger: DebugLogger): void => {
   logger.enabled = true;
+  logger.explicitlySet = true;
 };
 
 export const disableDebug = (logger: DebugLogger): void => {
   logger.enabled = false;
+  logger.explicitlySet = true;
 };

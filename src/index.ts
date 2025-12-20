@@ -30,7 +30,11 @@
  * Core Functions for mocking AWS SDK clients
  * @category Core Functions
  */
-export { mockClient, mockClientInstance } from "./lib/mock-client.js";
+export {
+  mockClient,
+  mockClientInstance,
+  setGlobalDebug,
+} from "./lib/mock-client.js";
 
 /**
  * Command stub interface for configuring mock behaviors
