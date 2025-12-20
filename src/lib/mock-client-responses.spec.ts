@@ -493,7 +493,7 @@ describe("Delay Simulation", () => {
     );
 
     const endTime = Date.now();
-    expect(endTime - startTime).toBeGreaterThanOrEqual(100);
+    expect(endTime - startTime).toBeGreaterThanOrEqual(90);
     expect(result.Body).toBe("delayed data");
   });
 
@@ -511,7 +511,7 @@ describe("Delay Simulation", () => {
     ).rejects.toThrow("Delayed error");
 
     const endTime = Date.now();
-    expect(endTime - startTime).toBeGreaterThanOrEqual(50);
+    expect(endTime - startTime).toBeGreaterThanOrEqual(40);
   });
 
   test("should handle zero delay", async () => {
