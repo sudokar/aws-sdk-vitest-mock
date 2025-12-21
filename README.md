@@ -17,6 +17,7 @@
   <a href="https://github.com/sudokar/aws-sdk-vitest-mock/actions">
       <img src="https://github.com/sudokar/aws-sdk-vitest-mock/actions/workflows/ci.yml/badge.svg" alt="CI Status" />
   </a>
+  <br />
   <img src="https://img.shields.io/badge/ESM%20Support-yes-4B32C3?logo=typescript" alt="ESM Support" />
   <img src="https://img.shields.io/badge/Zero%20Dependencies-yes-brightgreen" alt="Zero Dependencies" />
   <a href="https://eslint.org/">
@@ -38,6 +39,7 @@
 - 🎭 **Flexible Mocking** - Support for partial matching, strict matching, and custom handlers
 - 🧩 **Chainable API** - Fluent interface for configuring multiple mock behaviors
 - 🔍 **Custom Matchers** - Vitest matchers for asserting AWS SDK command calls
+- 📚 **Comprehensive API Docs** – [Read the full documentation here](https://sudokar.github.io/aws-sdk-vitest-mock/)
 
 ## 📦 Installation
 
