@@ -12,10 +12,12 @@
   <a href="https://www.npmjs.com/package/aws-sdk-vitest-mock">
     <img src="https://img.shields.io/npm/v/aws-sdk-vitest-mock?color=cb3837&logo=npm" alt="npm version" />
   </a>
+  <img alt="NPM Downloads" src="https://img.shields.io/npm/dm/aws-sdk-vitest-mock">
+  <img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/sudokar/aws-sdk-vitest-mock">
   <a href="https://github.com/sudokar/aws-sdk-vitest-mock/actions">
       <img src="https://github.com/sudokar/aws-sdk-vitest-mock/actions/workflows/ci.yml/badge.svg" alt="CI Status" />
   </a>
-  <img src="https://img.shields.io/badge/ESM%20Support-yes-4B32C3?logo=javascript" alt="ESM Support" />
+  <img src="https://img.shields.io/badge/ESM%20Support-yes-4B32C3?logo=typescript" alt="ESM Support" />
   <img src="https://img.shields.io/badge/Zero%20Dependencies-yes-brightgreen" alt="Zero Dependencies" />
   <a href="https://eslint.org/">
     <img src="https://img.shields.io/badge/code%20style-eslint-4B32C3?logo=eslint" alt="ESLint" />

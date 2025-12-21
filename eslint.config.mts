@@ -5,11 +5,12 @@ import unicorn from "eslint-plugin-unicorn";
 import sonarjs from "eslint-plugin-sonarjs";
 import tseslint from "typescript-eslint";
 import vitest from "@vitest/eslint-plugin";
+import { defineConfig } from "eslint/config";
 
 const unicornRecommendedRules =
   unicorn.configs["recommended"]?.rules ?? unicorn.configs.recommended.rules;
 
-export default tseslint.config(
+export default defineConfig(
   ...nx.configs["flat/base"],
   ...nx.configs["flat/typescript"],
   ...nx.configs["flat/javascript"],
@@ -25,6 +26,7 @@ export default tseslint.config(
       "**/out-tsc",
       "**/vitest.config.*.timestamp*",
       "vite.config.mts",
+      "eslint.config.mts",
     ],
   },
   {

@@ -50,6 +50,5 @@
     "git": {
       "commitMessage": "chore(release): {version}"
     }
-  },
-  "nxCloudId": "693c08da67bb76af270de958"
+  }
 }

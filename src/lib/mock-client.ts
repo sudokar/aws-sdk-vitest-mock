@@ -3,7 +3,7 @@ import type {
   SmithyResolvedConfiguration,
 } from "@smithy/smithy-client";
 import type { HttpHandlerOptions, MetadataBearer } from "@smithy/types";
-import { type Mock, vi } from "vitest";
+import { type Mock, type MockInstance, vi } from "vitest";
 import {
   createNoSuchKeyError,
   createNoSuchBucketError,
@@ -25,6 +25,14 @@ import {
   type PaginatorOptions,
 } from "./utils/paginator-helpers.js";
 import { createStream, type StreamInput } from "./utils/stream-helpers.js";
+
+type DeepPartial<T> = T extends (...args: unknown[]) => unknown
+  ? T
+  : T extends ReadonlyArray<infer U>
+    ? ReadonlyArray<DeepPartial<U>>
+    : T extends object
+      ? { [K in keyof T]?: DeepPartial<T[K]> }
+      : T;
 
 // Global debug state
 let globalDebugEnabled = false;
@@ -117,7 +125,7 @@ type CommandHandler<
 > = (
   input: TInput,
   clientInstance: TClient | undefined,
-) => Promise<Partial<TOutput>>;
+) => Promise<DeepPartial<TOutput>>;
 
 interface MockEntry<
   TInput extends object = object,
@@ -375,7 +383,7 @@ export interface AwsCommandStub<
    * ```
    */
   resolves: (
-    output: Partial<TOutput>,
+    output: DeepPartial<TOutput>,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
 
   /**
@@ -422,7 +430,7 @@ export interface AwsCommandStub<
    * ```
    */
   resolvesOnce: (
-    output: Partial<TOutput>,
+    output: DeepPartial<TOutput>,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
 
   /**
@@ -504,7 +512,7 @@ export interface AwsCommandStub<
    * ```
    */
   resolvesWithDelay: (
-    output: Partial<TOutput>,
+    output: DeepPartial<TOutput>,
     delayMs: number,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
 
@@ -823,6 +831,42 @@ function createMockImplementation(
   };
 }
 
+const createStubLifecycle = (
+  mocksContainer: MocksContainer,
+  sendSpy: MockInstance,
+  messages: { reset: string; restore: string },
+) => {
+  return {
+    reset(): void {
+      const shouldLog = getEffectiveDebugState(mocksContainer.debugLogger);
+      if (shouldLog) {
+        mocksContainer.debugLogger.logDirect(messages.reset);
+      }
+      sendSpy.mockClear();
+    },
+    restore(): void {
+      const shouldLog = getEffectiveDebugState(mocksContainer.debugLogger);
+      if (shouldLog) {
+        mocksContainer.debugLogger.logDirect(messages.restore);
+      }
+      sendSpy.mockRestore();
+      mocksContainer.map = new WeakMap();
+    },
+    calls(): AwsSdkCommand[] {
+      return sendSpy.mock.calls.map((call) => call[0] as AwsSdkCommand);
+    },
+    __rawCalls(): ReturnType<Mock["mock"]["calls"]["slice"]> {
+      return sendSpy.mock.calls;
+    },
+    enableDebug(): void {
+      enableDebug(mocksContainer.debugLogger);
+    },
+    disableDebug(): void {
+      disableDebug(mocksContainer.debugLogger);
+    },
+  };
+};
+
 function createCommandStub<
   TCtor extends AwsCommandConstructor,
   TClient extends AnyClient,
@@ -890,9 +934,9 @@ function createCommandStub<
 
   const stub: AwsCommandStub<TInput, TOutput, TClient> = {
     resolves(
-      output: Partial<TOutput>,
+      output: DeepPartial<TOutput>,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => Promise.resolve(output as TOutput), false, "resolves");
+      addEntry(() => Promise.resolve(output), false, "resolves");
       return stub;
     },
     rejects(error: Error | string): AwsCommandStub<TInput, TOutput, TClient> {
@@ -913,9 +957,9 @@ function createCommandStub<
       return stub;
     },
     resolvesOnce(
-      output: Partial<TOutput>,
+      output: DeepPartial<TOutput>,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      addEntry(() => Promise.resolve(output as TOutput), true, "resolves");
+      addEntry(() => Promise.resolve(output), true, "resolves");
       return stub;
     },
     rejectsOnce(
@@ -942,7 +986,9 @@ function createCommandStub<
     ): AwsCommandStub<TInput, TOutput, TClient> {
       addEntry(
         () =>
-          Promise.resolve({ Body: createStream(data) } as unknown as TOutput),
+          Promise.resolve({
+            Body: createStream(data),
+          } as unknown as DeepPartial<TOutput>),
         false,
         "resolvesStream",
       );
@@ -953,20 +999,28 @@ function createCommandStub<
     ): AwsCommandStub<TInput, TOutput, TClient> {
       addEntry(
         () =>
-          Promise.resolve({ Body: createStream(data) } as unknown as TOutput),
+          Promise.resolve({
+            Body: createStream(data),
+          } as unknown as DeepPartial<TOutput>),
         true,
         "resolvesStream",
       );
       return stub;
     },
     resolvesWithDelay(
-      output: Partial<TOutput>,
+      output: DeepPartial<TOutput>,
       delayMs: number,
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      const delayedResolve = (resolve: (value: TOutput) => void) => {
-        setTimeout(() => resolve(output as TOutput), delayMs);
+      const delayedResolve = (
+        resolve: (value: DeepPartial<TOutput>) => void,
+      ) => {
+        setTimeout(() => resolve(output), delayMs);
       };
-      addEntry(() => new Promise(delayedResolve), false, "resolvesWithDelay");
+      addEntry(
+        () => new Promise<DeepPartial<TOutput>>(delayedResolve),
+        false,
+        "resolvesWithDelay",
+      );
       return stub;
     },
     rejectsWithDelay(
@@ -1103,7 +1157,7 @@ function createCommandStub<
           }
           currentIndex = Math.min(currentIndex + 1, responses.length - 1);
 
-          return Promise.resolve(response as unknown as TOutput);
+          return Promise.resolve(response as unknown as DeepPartial<TOutput>);
         },
         false,
         "resolvesPaginated",
@@ -1121,7 +1175,7 @@ function createCommandStub<
       addEntry(
         () => {
           const data = loadFixture(filePath);
-          return Promise.resolve(data as TOutput);
+          return Promise.resolve(data as DeepPartial<TOutput>);
         },
         false,
         "resolvesFromFile",
@@ -1175,6 +1229,11 @@ export const mockClient = <TClient extends AnyClient>(
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- Required for Vitest mockImplementation type compatibility
     .mockImplementation(createMockImplementation(mocksContainer) as any);
 
+  const lifecycle = createStubLifecycle(mocksContainer, sendSpy, {
+    reset: "Clearing call history (mocks preserved)",
+    restore: "Restoring original client behavior and clearing all mocks",
+  });
+
   const stub: AwsClientStub<TClient> = {
     client: undefined,
     on: <TCtor extends AwsCommandConstructor>(
@@ -1192,35 +1251,7 @@ export const mockClient = <TClient extends AnyClient>(
         request,
         options,
       ),
-    reset: (): void => {
-      const shouldLog = getEffectiveDebugState(mocksContainer.debugLogger);
-      if (shouldLog) {
-        mocksContainer.debugLogger.logDirect(
-          "Clearing call history (mocks preserved)",
-        );
-      }
-      sendSpy.mockClear();
-    },
-    restore: (): void => {
-      const shouldLog = getEffectiveDebugState(mocksContainer.debugLogger);
-      if (shouldLog) {
-        mocksContainer.debugLogger.logDirect(
-          "Restoring original client behavior and clearing all mocks",
-        );
-      }
-      sendSpy.mockRestore();
-      mocksContainer.map = new WeakMap();
-    },
-    calls: (): AwsSdkCommand[] =>
-      sendSpy.mock.calls.map((call) => call[0] as AwsSdkCommand),
-    __rawCalls: (): ReturnType<Mock["mock"]["calls"]["slice"]> =>
-      sendSpy.mock.calls,
-    enableDebug: (): void => {
-      enableDebug(mocksContainer.debugLogger);
-    },
-    disableDebug: (): void => {
-      disableDebug(mocksContainer.debugLogger);
-    },
+    ...lifecycle,
   };
 
   return stub;
@@ -1263,6 +1294,12 @@ export const mockClientInstance = <TClient extends AnyClient>(
     .spyOn(clientInstance as unknown as AnyClient, "send")
     .mockImplementation(createMockImplementation(mocksContainer));
 
+  const lifecycle = createStubLifecycle(mocksContainer, sendSpy, {
+    reset: "Clearing call history (mocks preserved) for client instance",
+    restore:
+      "Restoring original client behavior and clearing all mocks for client instance",
+  });
+
   const stub: AwsClientStub<AnyClient> = {
     client: clientInstance as unknown as AnyClient,
     on: <TCtor extends AwsCommandConstructor>(
@@ -1280,34 +1317,7 @@ export const mockClientInstance = <TClient extends AnyClient>(
         request,
         options,
       ),
-    reset: (): void => {
-      const shouldLog = getEffectiveDebugState(mocksContainer.debugLogger);
-      if (shouldLog) {
-        mocksContainer.debugLogger.logDirect(
-          "Clearing call history (mocks preserved) for client instance",
-        );
-      }
-      sendSpy.mockClear();
-    },
-    restore: (): void => {
-      const shouldLog = getEffectiveDebugState(mocksContainer.debugLogger);
-      if (shouldLog) {
-        mocksContainer.debugLogger.logDirect(
-          "Restoring original client behavior and clearing all mocks for client instance",
-        );
-      }
-      sendSpy.mockRestore();
-      mocksContainer.map = new WeakMap();
-    },
-    calls: (): AwsSdkCommand[] => sendSpy.mock.calls.map((call) => call[0]),
-    __rawCalls: (): ReturnType<Mock["mock"]["calls"]["slice"]> =>
-      sendSpy.mock.calls,
-    enableDebug: (): void => {
-      enableDebug(mocksContainer.debugLogger);
-    },
-    disableDebug: (): void => {
-      disableDebug(mocksContainer.debugLogger);
-    },
+    ...lifecycle,
   };
 
   return stub;
