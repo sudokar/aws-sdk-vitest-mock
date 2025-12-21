@@ -15,7 +15,7 @@ export class AwsError extends Error {
     retryable?: boolean,
   ) {
     super(message);
-    this.name = "AwsError" as const;
+    this.name = code;
     this.code = code;
     this.statusCode = statusCode;
     this.retryable = retryable;
