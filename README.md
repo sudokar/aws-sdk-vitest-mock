@@ -31,6 +31,8 @@
 
 ---
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/8b04ee545dae4f0cb543f58a464cbe45)](https://app.codacy.com/gh/sudokar/aws-sdk-vitest-mock?utm_source=github.com&utm_medium=referral&utm_content=sudokar/aws-sdk-vitest-mock&utm_campaign=Badge_Grade)
+
 ## ✨ Features
 
 - 🎯 **Type-Safe Mocking** - Full TypeScript support with strict type checking
