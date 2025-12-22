@@ -12,6 +12,9 @@
   <a href="https://www.npmjs.com/package/aws-sdk-vitest-mock">
     <img src="https://img.shields.io/npm/v/aws-sdk-vitest-mock?color=cb3837&logo=npm" alt="npm version" />
   </a>
+  <a href="https://app.codacy.com/gh/sudokar/aws-sdk-vitest-mock/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade">
+    <img src="https://app.codacy.com/project/badge/Grade/9f7e00cbb11c41f78cac6b85c8840672" alt="Codacy Badge" />
+  </a>
   <img alt="NPM Downloads" src="https://img.shields.io/npm/dm/aws-sdk-vitest-mock">
   <img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/sudokar/aws-sdk-vitest-mock">
   <a href="https://github.com/sudokar/aws-sdk-vitest-mock/actions">
