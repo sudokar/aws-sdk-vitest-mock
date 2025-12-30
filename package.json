@@ -50,7 +50,7 @@
     "@nx/js": "22.2.2",
     "@nx/vite": "22.2.2",
     "@nx/vitest": "22.2.2",
-    "@nx/workspace": "22.2.2",
+    "@nx/workspace": "22.3.3",
     "@smithy/types": "4.9.0",
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.3",
