@@ -58,7 +58,7 @@
     "@types/eslint-plugin-security": "3.0.0",
     "@types/node": "24.10.3",
     "@typescript-eslint/parser": "8.51.0",
-    "@vitest/coverage-v8": "4.0.15",
+    "@vitest/coverage-v8": "4.0.16",
     "@vitest/eslint-plugin": "1.5.2",
     "eslint": "9.39.1",
     "eslint-config-prettier": "10.1.8",
