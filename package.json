@@ -41,7 +41,7 @@
   "dependencies": {},
   "devDependencies": {
     "@aws-sdk/client-dynamodb": "3.948.0",
-    "@aws-sdk/client-s3": "3.948.0",
+    "@aws-sdk/client-s3": "3.958.0",
     "@aws-sdk/lib-dynamodb": "3.948.0",
     "@aws-sdk/types": "3.957.0",
     "@eslint/js": "9.39.1",
