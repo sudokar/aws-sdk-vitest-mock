@@ -2,7 +2,7 @@ pull_request_rules:
   - name: Automatic merge
     description: Merge when PR passes all branch protection and has label automerge
     conditions:
-      - label = automerge
+      - label = dependencies
     actions:
       merge:
   - name: Make sure PR are up to date before merging
