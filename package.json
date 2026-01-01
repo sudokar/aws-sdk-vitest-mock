@@ -59,7 +59,7 @@
     "@types/node": "24.10.3",
     "@typescript-eslint/parser": "8.51.0",
     "@vitest/coverage-v8": "4.0.16",
-    "@vitest/eslint-plugin": "1.5.2",
+    "@vitest/eslint-plugin": "1.6.4",
     "eslint": "9.39.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-import": "2.32.0",
