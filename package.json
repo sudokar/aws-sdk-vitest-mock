@@ -1,6 +1,6 @@
 {
   "name": "aws-sdk-vitest-mock",
-  "version": "0.7.13",
+  "version": "0.7.14",
   "type": "module",
   "main": "./index.cjs",
   "module": "./index.js",
@@ -56,7 +56,7 @@
     "@swc/core": "1.15.3",
     "@swc/helpers": "0.5.18",
     "@types/eslint-plugin-security": "3.0.0",
-    "@types/node": "24.10.3",
+    "@types/node": "24.10.4",
     "@typescript-eslint/parser": "8.51.0",
     "@vitest/coverage-v8": "4.0.16",
     "@vitest/eslint-plugin": "1.6.4",
