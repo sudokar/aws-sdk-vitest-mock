@@ -7,7 +7,7 @@
       "devDependencies": {
         "@aws-sdk/client-dynamodb": "3.962.0",
         "@aws-sdk/client-s3": "3.962.0",
-        "@aws-sdk/lib-dynamodb": "3.962.0",
+        "@aws-sdk/lib-dynamodb": "3.964.0",
         "@aws-sdk/types": "3.957.0",
         "@eslint/js": "9.39.2",
         "@nx/eslint": "22.3.3",
@@ -39,7 +39,7 @@
         "typedoc": "0.28.15",
         "typescript": "5.9.3",
         "typescript-eslint": "8.52.0",
-        "vite": "7.3.0",
+        "vite": "7.3.1",
         "vite-plugin-dts": "4.5.4",
         "vitest": "4.0.16",
       },
@@ -94,7 +94,7 @@
 
     "@aws-sdk/endpoint-cache": ["@aws-sdk/endpoint-cache@3.957.0", "", { "dependencies": { "mnemonist": "0.38.3", "tslib": "^2.6.2" } }, "sha512-QxvFejXYYBZp/GBfT7B15gvmvuq+0f2U8RPHqArf5IqBi51ZyBqUD805tQ8TlsVrlLoi+Z4fEFw4HEM5pGvPUg=="],
 
-    "@aws-sdk/lib-dynamodb": ["@aws-sdk/lib-dynamodb@3.962.0", "", { "dependencies": { "@aws-sdk/core": "3.957.0", "@aws-sdk/util-dynamodb": "3.962.0", "@smithy/core": "^3.20.0", "@smithy/smithy-client": "^4.10.2", "@smithy/types": "^4.11.0", "tslib": "^2.6.2" }, "peerDependencies": { "@aws-sdk/client-dynamodb": "^3.962.0" } }, "sha512-aUUqAO9GHHXEucuZgQiA/1rf8Q4UnitbNs3Y7y72ic8PmTrHAa64tVyd1Rlwwj27opy9BSdYRaUuMfAjSM1hXQ=="],
+    "@aws-sdk/lib-dynamodb": ["@aws-sdk/lib-dynamodb@3.964.0", "", { "dependencies": { "@aws-sdk/core": "3.964.0", "@aws-sdk/util-dynamodb": "3.964.0", "@smithy/core": "^3.20.0", "@smithy/smithy-client": "^4.10.2", "@smithy/types": "^4.11.0", "tslib": "^2.6.2" }, "peerDependencies": { "@aws-sdk/client-dynamodb": "^3.964.0" } }, "sha512-d47fqVZLbscpym4smoUumh3TdyXCIGQ/Xw+nUfiiOWdfVDMdGnKkSJBNlob2dpJr+kD7j1QW48+bFuKdn5kAvQ=="],
 
     "@aws-sdk/middleware-bucket-endpoint": ["@aws-sdk/middleware-bucket-endpoint@3.957.0", "", { "dependencies": { "@aws-sdk/types": "3.957.0", "@aws-sdk/util-arn-parser": "3.957.0", "@smithy/node-config-provider": "^4.3.7", "@smithy/protocol-http": "^5.3.7", "@smithy/types": "^4.11.0", "@smithy/util-config-provider": "^4.2.0", "tslib": "^2.6.2" } }, "sha512-iczcn/QRIBSpvsdAS/rbzmoBpleX1JBjXvCynMbDceVLBIcVrwT1hXECrhtIC2cjh4HaLo9ClAbiOiWuqt+6MA=="],
 
@@ -130,7 +130,7 @@
 
     "@aws-sdk/util-arn-parser": ["@aws-sdk/util-arn-parser@3.957.0", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-Aj6m+AyrhWyg8YQ4LDPg2/gIfGHCEcoQdBt5DeSFogN5k9mmJPOJ+IAmNSWmWRjpOxEy6eY813RNDI6qS97M0g=="],
 
-    "@aws-sdk/util-dynamodb": ["@aws-sdk/util-dynamodb@3.962.0", "", { "dependencies": { "tslib": "^2.6.2" }, "peerDependencies": { "@aws-sdk/client-dynamodb": "^3.962.0" } }, "sha512-hv2Imj8R8AcMmntWq2/oxNs0CPQojFpgvyR5UalXSY3hIhcEHrWADimG2OwkW7J1Y9eKx/3NKfFpqsmDogbJMg=="],
+    "@aws-sdk/util-dynamodb": ["@aws-sdk/util-dynamodb@3.964.0", "", { "dependencies": { "tslib": "^2.6.2" }, "peerDependencies": { "@aws-sdk/client-dynamodb": "^3.964.0" } }, "sha512-1M1IStMi+/47p7hiswUdsDU/FNP8eeXWqZMYTBQmB9cYocyhCx5OZOh/1AJDaCeTv18lujMj/QnDREk/RwrTBQ=="],
 
     "@aws-sdk/util-endpoints": ["@aws-sdk/util-endpoints@3.957.0", "", { "dependencies": { "@aws-sdk/types": "3.957.0", "@smithy/types": "^4.11.0", "@smithy/url-parser": "^4.2.7", "@smithy/util-endpoints": "^3.2.7", "tslib": "^2.6.2" } }, "sha512-xwF9K24mZSxcxKS3UKQFeX/dPYkEps9wF1b+MGON7EvnbcucrJGyQyK1v1xFPn1aqXkBTFi+SZaMRx5E5YCVFw=="],
 
@@ -1642,7 +1642,7 @@
 
     "util-deprecate": ["util-deprecate@1.0.2", "", {}, "sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw=="],
 
-    "vite": ["vite@7.3.0", "", { "dependencies": { "esbuild": "^0.27.0", "fdir": "^6.5.0", "picomatch": "^4.0.3", "postcss": "^8.5.6", "rollup": "^4.43.0", "tinyglobby": "^0.2.15" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^20.19.0 || >=22.12.0", "jiti": ">=1.21.0", "less": "^4.0.0", "lightningcss": "^1.21.0", "sass": "^1.70.0", "sass-embedded": "^1.70.0", "stylus": ">=0.54.8", "sugarss": "^5.0.0", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-dZwN5L1VlUBewiP6H9s2+B3e3Jg96D0vzN+Ry73sOefebhYr9f94wwkMNN/9ouoU8pV1BqA1d1zGk8928cx0rg=="],
+    "vite": ["vite@7.3.1", "", { "dependencies": { "esbuild": "^0.27.0", "fdir": "^6.5.0", "picomatch": "^4.0.3", "postcss": "^8.5.6", "rollup": "^4.43.0", "tinyglobby": "^0.2.15" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^20.19.0 || >=22.12.0", "jiti": ">=1.21.0", "less": "^4.0.0", "lightningcss": "^1.21.0", "sass": "^1.70.0", "sass-embedded": "^1.70.0", "stylus": ">=0.54.8", "sugarss": "^5.0.0", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-w+N7Hifpc3gRjZ63vYBXA56dvvRlNWRczTdmCBBa+CotUzAPf5b7YMdMR/8CQoeYE5LX3W4wj6RYTgonm1b9DA=="],
 
     "vite-plugin-dts": ["vite-plugin-dts@4.5.4", "", { "dependencies": { "@microsoft/api-extractor": "^7.50.1", "@rollup/pluginutils": "^5.1.4", "@volar/typescript": "^2.4.11", "@vue/language-core": "2.2.0", "compare-versions": "^6.1.1", "debug": "^4.4.0", "kolorist": "^1.8.0", "local-pkg": "^1.0.0", "magic-string": "^0.30.17" }, "peerDependencies": { "typescript": "*", "vite": "*" }, "optionalPeers": ["vite"] }, "sha512-d4sOM8M/8z7vRXHHq/ebbblfaxENjogAAekcfcDCCwAyvGqnPrc7f4NZbvItS+g4WTgerW0xDwSz5qz11JT3vg=="],
 
@@ -1752,7 +1752,7 @@
 
     "@aws-sdk/dynamodb-codec/@aws-sdk/core": ["@aws-sdk/core@3.957.0", "", { "dependencies": { "@aws-sdk/types": "3.957.0", "@aws-sdk/xml-builder": "3.957.0", "@smithy/core": "^3.20.0", "@smithy/node-config-provider": "^4.3.7", "@smithy/property-provider": "^4.2.7", "@smithy/protocol-http": "^5.3.7", "@smithy/signature-v4": "^5.3.7", "@smithy/smithy-client": "^4.10.2", "@smithy/types": "^4.11.0", "@smithy/util-base64": "^4.3.0", "@smithy/util-middleware": "^4.2.7", "@smithy/util-utf8": "^4.2.0", "tslib": "^2.6.2" } }, "sha512-DrZgDnF1lQZv75a52nFWs6MExihJF2GZB6ETZRqr6jMwhrk2kbJPUtvgbifwcL7AYmVqHQDJBrR/MqkwwFCpiw=="],
 
-    "@aws-sdk/lib-dynamodb/@aws-sdk/core": ["@aws-sdk/core@3.957.0", "", { "dependencies": { "@aws-sdk/types": "3.957.0", "@aws-sdk/xml-builder": "3.957.0", "@smithy/core": "^3.20.0", "@smithy/node-config-provider": "^4.3.7", "@smithy/property-provider": "^4.2.7", "@smithy/protocol-http": "^5.3.7", "@smithy/signature-v4": "^5.3.7", "@smithy/smithy-client": "^4.10.2", "@smithy/types": "^4.11.0", "@smithy/util-base64": "^4.3.0", "@smithy/util-middleware": "^4.2.7", "@smithy/util-utf8": "^4.2.0", "tslib": "^2.6.2" } }, "sha512-DrZgDnF1lQZv75a52nFWs6MExihJF2GZB6ETZRqr6jMwhrk2kbJPUtvgbifwcL7AYmVqHQDJBrR/MqkwwFCpiw=="],
+    "@aws-sdk/lib-dynamodb/@aws-sdk/core": ["@aws-sdk/core@3.964.0", "", { "dependencies": { "@aws-sdk/types": "3.957.0", "@aws-sdk/xml-builder": "3.957.0", "@smithy/core": "^3.20.0", "@smithy/node-config-provider": "^4.3.7", "@smithy/property-provider": "^4.2.7", "@smithy/protocol-http": "^5.3.7", "@smithy/signature-v4": "^5.3.7", "@smithy/smithy-client": "^4.10.2", "@smithy/types": "^4.11.0", "@smithy/util-base64": "^4.3.0", "@smithy/util-middleware": "^4.2.7", "@smithy/util-utf8": "^4.2.0", "tslib": "^2.6.2" } }, "sha512-1gIfbt0KRxI8am1UYFcIxQ5QKb22JyN3k52sxyrKXJYC8Knn/rTUAZbYti45CfETe5PLadInGvWqClwGRlZKNg=="],
 
     "@aws-sdk/middleware-flexible-checksums/@aws-sdk/core": ["@aws-sdk/core@3.957.0", "", { "dependencies": { "@aws-sdk/types": "3.957.0", "@aws-sdk/xml-builder": "3.957.0", "@smithy/core": "^3.20.0", "@smithy/node-config-provider": "^4.3.7", "@smithy/property-provider": "^4.2.7", "@smithy/protocol-http": "^5.3.7", "@smithy/signature-v4": "^5.3.7", "@smithy/smithy-client": "^4.10.2", "@smithy/types": "^4.11.0", "@smithy/util-base64": "^4.3.0", "@smithy/util-middleware": "^4.2.7", "@smithy/util-utf8": "^4.2.0", "tslib": "^2.6.2" } }, "sha512-DrZgDnF1lQZv75a52nFWs6MExihJF2GZB6ETZRqr6jMwhrk2kbJPUtvgbifwcL7AYmVqHQDJBrR/MqkwwFCpiw=="],
 
@@ -1937,6 +1937,8 @@
     "vite/picomatch": ["picomatch@4.0.3", "", {}, "sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q=="],
 
     "vitest/picomatch": ["picomatch@4.0.3", "", {}, "sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q=="],
+
+    "vitest/vite": ["vite@7.3.0", "", { "dependencies": { "esbuild": "^0.27.0", "fdir": "^6.5.0", "picomatch": "^4.0.3", "postcss": "^8.5.6", "rollup": "^4.43.0", "tinyglobby": "^0.2.15" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^20.19.0 || >=22.12.0", "jiti": ">=1.21.0", "less": "^4.0.0", "lightningcss": "^1.21.0", "sass": "^1.70.0", "sass-embedded": "^1.70.0", "stylus": ">=0.54.8", "sugarss": "^5.0.0", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-dZwN5L1VlUBewiP6H9s2+B3e3Jg96D0vzN+Ry73sOefebhYr9f94wwkMNN/9ouoU8pV1BqA1d1zGk8928cx0rg=="],
 
     "wrap-ansi/ansi-styles": ["ansi-styles@6.2.3", "", {}, "sha512-4Dj6M28JB+oAH8kFkTLUo+a2jwOFkuqb3yucU0CANcRRUbxS0cP0nZYCGjcc3BNXwRIsUVmDGgzawme7zvJHvg=="],
 
