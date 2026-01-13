@@ -76,7 +76,7 @@
     "typescript-eslint": "8.52.0",
     "vite": "7.3.1",
     "vite-plugin-dts": "4.5.4",
-    "vitest": "4.0.16"
+    "vitest": "4.0.17"
   },
   "peerDependencies": {
     "@aws-sdk/core": "^3",
