@@ -149,6 +149,35 @@ function matchesPartial<T extends object>(
     const matcherValue = matcher[key as keyof T];
     const inputValue = input[key as keyof T];
 
+    // Handle arrays with deep equality
+    if (Array.isArray(matcherValue)) {
+      if (!Array.isArray(inputValue)) {
+        return false;
+      }
+      // For partial matching, check if all matcher array elements match
+      // corresponding elements in the input array
+      if (matcherValue.length > inputValue.length) {
+        return false;
+      }
+      return matcherValue.every((matcherItem, index) => {
+        // eslint-disable-next-line security/detect-object-injection, @typescript-eslint/no-unsafe-assignment -- Array index access is safe
+        const inputItem = inputValue[index];
+        if (
+          matcherItem &&
+          typeof matcherItem === "object" &&
+          typeof inputItem === "object" &&
+          inputItem !== null
+        ) {
+          return matchesPartial(
+            inputItem as object,
+            matcherItem as Partial<object>,
+          );
+        }
+        return inputItem === matcherItem;
+      });
+    }
+
+    // Handle nested objects
     if (
       matcherValue &&
       typeof matcherValue === "object" &&
@@ -179,6 +208,30 @@ function matchesStrict<T extends object>(
     matcher === null
   ) {
     return input === (matcher as unknown as T);
+  }
+
+  // Handle arrays explicitly with deep equality
+  if (Array.isArray(input) && Array.isArray(matcher)) {
+    if (input.length !== matcher.length) return false;
+    return input.every((inputItem, index) => {
+      // eslint-disable-next-line security/detect-object-injection, @typescript-eslint/no-unsafe-assignment -- Array index access is safe
+      const matcherItem = matcher[index];
+      if (
+        typeof inputItem === "object" &&
+        inputItem !== null &&
+        typeof matcherItem === "object" &&
+        matcherItem !== null
+      ) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- Recursive matching requires flexible typing
+        return matchesStrict(inputItem, matcherItem);
+      }
+      return inputItem === matcherItem;
+    });
+  }
+
+  // One is array, other is not - no match
+  if (Array.isArray(input) !== Array.isArray(matcher)) {
+    return false;
   }
 
   const inputKeys = Object.keys(input);
