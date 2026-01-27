@@ -21,7 +21,7 @@
         "@swc-node/register": "1.11.1",
         "@swc/core": "1.15.10",
         "@swc/helpers": "0.5.18",
-        "@types/eslint-plugin-security": "3.0.0",
+        "@types/eslint-plugin-security": "3.0.1",
         "@types/node": "24.10.9",
         "@typescript-eslint/parser": "8.53.1",
         "@vitest/coverage-v8": "4.0.17",
@@ -753,7 +753,7 @@
 
     "@types/eslint": ["@types/eslint@9.6.1", "", { "dependencies": { "@types/estree": "*", "@types/json-schema": "*" } }, "sha512-FXx2pKgId/WyYo2jXw63kk7/+TY7u7AziEJxJAnSFzHlqTAS3Ync6SvgYAN/k4/PQpnnVuzoMuVnByKK2qp0ag=="],
 
-    "@types/eslint-plugin-security": ["@types/eslint-plugin-security@3.0.0", "", { "dependencies": { "@types/eslint": "*" } }, "sha512-CpJ7dhqhfURdYHAlaQM4vfl75lDYnGl5+EZKoO/fW0hEREZa9+EBn1g10XLDM6n5yJSuTAPn5afkM4vNzhlyFQ=="],
+    "@types/eslint-plugin-security": ["@types/eslint-plugin-security@3.0.1", "", { "dependencies": { "@types/eslint": "*" } }, "sha512-z+v78aGgONHyq7mMaXgzG+10HonH0HBubSLDbTXdNGyCLtM3c29MdDc9hQzHO9pDan4WYHWdULVOJyzszqDuqg=="],
 
     "@types/estree": ["@types/estree@1.0.8", "", {}, "sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w=="],
 
