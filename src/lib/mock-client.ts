@@ -1184,8 +1184,7 @@ function createCommandStub<
               // eslint-disable-next-line security/detect-object-injection
               const pageItems = responseRecord[itemsKey] as unknown[];
               if (pageItems && pageItems.length > 0) {
-                // eslint-disable-next-line unicorn/prefer-at -- TypeScript target doesn't support Array.at() method
-                const lastItem = pageItems[pageItems.length - 1];
+                const lastItem = pageItems.at(-1);
 
                 // Compare the token with the last item (deep equality check)
                 if (JSON.stringify(lastItem) === JSON.stringify(inputToken)) {
@@ -1201,10 +1200,7 @@ function createCommandStub<
 
           const response =
             // eslint-disable-next-line security/detect-object-injection
-            responses[currentIndex] ||
-            // eslint-disable-next-line unicorn/prefer-at -- TypeScript target doesn't support Array.at() method
-            responses[responses.length - 1] ||
-            responses[0];
+            responses[currentIndex] || responses.at(-1) || responses[0];
           if (!response) {
             throw new Error("No paginated responses available");
           }

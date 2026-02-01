@@ -63,6 +63,9 @@ const createWebStream = (data: StreamInput): ReadableStream<Uint8Array> => {
 export const createStream = (
   data: StreamInput,
 ): Readable | ReadableStream<Uint8Array> => {
+  if (data === undefined || data === null) {
+    throw new TypeError("data must be a string, Buffer, or Uint8Array");
+  }
   const env = detectEnvironment();
 
   return env === "node" || env === "bun"

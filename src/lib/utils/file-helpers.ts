@@ -2,6 +2,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 export const loadFixture = (filePath: string): unknown => {
+  if (!filePath || typeof filePath !== "string") {
+    throw new TypeError("filePath must be a non-empty string");
+  }
   const resolvedPath = path.resolve(filePath);
   try {
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- Dynamic file loading is core functionality for fixture loading

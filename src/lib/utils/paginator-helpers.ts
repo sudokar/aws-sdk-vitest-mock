@@ -106,6 +106,10 @@ export const createPaginatedResponses = <T>(
 ): PaginatedResponse<T>[] => {
   const { pageSize = 10, tokenKey = "NextToken", itemsKey = "Items" } = options;
 
+  if (!Number.isInteger(pageSize) || pageSize <= 0) {
+    throw new TypeError("pageSize must be a positive integer");
+  }
+
   if (items.length === 0) {
     return [{ [itemsKey]: [] } as PaginatedResponse<T>];
   }
@@ -120,8 +124,7 @@ export const createPaginatedResponses = <T>(
 
     if (hasMore) {
       const responseRecord = response as Record<string, unknown>;
-      // eslint-disable-next-line unicorn/prefer-at -- TypeScript target doesn't support Array.at() method
-      const lastItem = pageItems[pageItems.length - 1];
+      const lastItem = pageItems.at(-1);
 
       // Always use the last item as the token (works for both DynamoDB and S3)
       // eslint-disable-next-line security/detect-object-injection -- Dynamic token key assignment required for AWS pagination simulation

@@ -34,4 +34,29 @@ describe("file-helpers", () => {
   test("should throw error for non-existent files", () => {
     expect(() => loadFixture("non-existent.json")).toThrow();
   });
+
+  test("should throw TypeError for empty string filePath", () => {
+    expect(() => loadFixture("")).toThrow(TypeError);
+    expect(() => loadFixture("")).toThrow(
+      "filePath must be a non-empty string",
+    );
+  });
+
+  test("should throw TypeError for null filePath", () => {
+    // eslint-disable-next-line unicorn/no-null -- Testing null input validation
+    expect(() => loadFixture(null as unknown as string)).toThrow(TypeError);
+    // eslint-disable-next-line unicorn/no-null -- Testing null input validation
+    expect(() => loadFixture(null as unknown as string)).toThrow(
+      "filePath must be a non-empty string",
+    );
+  });
+
+  test("should throw TypeError for undefined filePath", () => {
+    expect(() => loadFixture(undefined as unknown as string)).toThrow(
+      TypeError,
+    );
+    expect(() => loadFixture(undefined as unknown as string)).toThrow(
+      "filePath must be a non-empty string",
+    );
+  });
 });
