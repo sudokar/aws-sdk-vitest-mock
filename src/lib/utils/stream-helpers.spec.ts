@@ -83,5 +83,23 @@ describe("stream-helpers", () => {
       const { done: secondDone } = await reader.read();
       expect(secondDone).toBe(true);
     });
+
+    it("should throw TypeError for undefined data", () => {
+      expect(() => createStream(undefined as unknown as string)).toThrow(
+        TypeError,
+      );
+      expect(() => createStream(undefined as unknown as string)).toThrow(
+        "data must be a string, Buffer, or Uint8Array",
+      );
+    });
+
+    it("should throw TypeError for null data", () => {
+      // eslint-disable-next-line unicorn/no-null -- Testing null input validation
+      expect(() => createStream(null as unknown as string)).toThrow(TypeError);
+      // eslint-disable-next-line unicorn/no-null -- Testing null input validation
+      expect(() => createStream(null as unknown as string)).toThrow(
+        "data must be a string, Buffer, or Uint8Array",
+      );
+    });
   });
 });

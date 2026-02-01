@@ -31,6 +31,27 @@ describe("aws-errors", () => {
       expect(error.statusCode).toBeUndefined();
       expect(error.retryable).toBeUndefined();
     });
+
+    it("should have $metadata with httpStatusCode matching statusCode", () => {
+      const error = new AwsError("Test message", "TestCode", 404, false);
+
+      expect(error.$metadata).toBeDefined();
+      expect(error.$metadata?.httpStatusCode).toBe(404);
+    });
+
+    it("should have $metadata with undefined httpStatusCode when statusCode not provided", () => {
+      const error = new AwsError("Test message", "TestCode");
+
+      expect(error.$metadata).toBeDefined();
+      expect(error.$metadata?.httpStatusCode).toBeUndefined();
+    });
+
+    it("should be an instance of AwsError", () => {
+      const error = new AwsError("Test message", "TestCode");
+
+      expect(error).toBeInstanceOf(AwsError);
+      expect(error).toBeInstanceOf(Error);
+    });
   });
 
   describe("S3 Errors", () => {

@@ -7,6 +7,14 @@ export class AwsError extends Error {
   public readonly code: string;
   public readonly statusCode?: number;
   public readonly retryable?: boolean;
+  public readonly $metadata?: {
+    httpStatusCode?: number;
+    requestId?: string;
+    extendedRequestId?: string;
+    cfId?: string;
+    attempts?: number;
+    totalRetryDelay?: number;
+  };
 
   constructor(
     message: string,
@@ -19,6 +27,12 @@ export class AwsError extends Error {
     this.code = code;
     this.statusCode = statusCode;
     this.retryable = retryable;
+    this.$metadata = {
+      httpStatusCode: statusCode,
+    };
+
+    // Fix prototype chain for proper instanceof behavior across environments
+    Object.setPrototypeOf(this, AwsError.prototype);
   }
 }
 

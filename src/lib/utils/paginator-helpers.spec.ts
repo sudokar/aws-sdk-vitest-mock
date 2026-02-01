@@ -167,5 +167,32 @@ describe("paginator-helpers", () => {
       expect(responses[1].NextToken).toBe(4);
       expect(responses[2].NextToken).toBeUndefined();
     });
+
+    it("should throw TypeError for pageSize of 0", () => {
+      expect(() =>
+        createPaginatedResponses([1, 2, 3], { pageSize: 0 }),
+      ).toThrow(TypeError);
+      expect(() =>
+        createPaginatedResponses([1, 2, 3], { pageSize: 0 }),
+      ).toThrow("pageSize must be a positive integer");
+    });
+
+    it("should throw TypeError for negative pageSize", () => {
+      expect(() =>
+        createPaginatedResponses([1, 2, 3], { pageSize: -1 }),
+      ).toThrow(TypeError);
+      expect(() =>
+        createPaginatedResponses([1, 2, 3], { pageSize: -5 }),
+      ).toThrow("pageSize must be a positive integer");
+    });
+
+    it("should throw TypeError for non-integer pageSize", () => {
+      expect(() =>
+        createPaginatedResponses([1, 2, 3], { pageSize: 2.5 }),
+      ).toThrow(TypeError);
+      expect(() =>
+        createPaginatedResponses([1, 2, 3], { pageSize: 2.5 }),
+      ).toThrow("pageSize must be a positive integer");
+    });
   });
 });
