@@ -1,6 +1,6 @@
 {
   "name": "aws-sdk-vitest-mock",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "type": "module",
   "main": "./index.cjs",
   "module": "./index.js",
