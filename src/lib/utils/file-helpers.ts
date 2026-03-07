@@ -11,6 +11,12 @@ const getErrorMessage = (error: unknown): string => {
   return "Unknown error";
 };
 
+const createErrorWithCause = (message: string, cause: unknown): Error => {
+  const error = new Error(message);
+  (error as Error & { cause?: unknown }).cause = cause;
+  return error;
+};
+
 export const loadFixture = (filePath: string): unknown => {
   if (!filePath || typeof filePath !== "string") {
     throw new TypeError("filePath must be a non-empty string");
@@ -25,9 +31,9 @@ export const loadFixture = (filePath: string): unknown => {
         return JSON.parse(content);
       } catch (error: unknown) {
         const message = getErrorMessage(error);
-        throw new Error(
+        throw createErrorWithCause(
           `Failed to parse JSON fixture at ${resolvedPath}: ${message}`,
-          { cause: error },
+          error,
         );
       }
     }
@@ -35,8 +41,9 @@ export const loadFixture = (filePath: string): unknown => {
     return content;
   } catch (error: unknown) {
     const message = getErrorMessage(error);
-    throw new Error(`Failed to load fixture at ${resolvedPath}: ${message}`, {
-      cause: error,
-    });
+    throw createErrorWithCause(
+      `Failed to load fixture at ${resolvedPath}: ${message}`,
+      error,
+    );
   }
 };
