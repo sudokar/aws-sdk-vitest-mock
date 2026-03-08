@@ -81,6 +81,6 @@
   },
   "peerDependencies": {
     "@aws-sdk/core": "^3",
-    "vitest": "^4"
+    "vitest": "^3 || ^4"
   }
 }
