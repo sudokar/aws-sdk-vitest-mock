@@ -64,6 +64,11 @@ yarn add -D aws-sdk-vitest-mock
 pnpm add -D aws-sdk-vitest-mock
 ```
 
+## ✅ Compatibility
+
+- Vitest: ^3 or ^4
+- AWS SDK: v3
+
 ## 🚀 Quick Start
 
 ### Basic Usage
