@@ -47,7 +47,7 @@
     "@aws-sdk/types": "3.973.1",
     "@eslint/js": "10.0.1",
     "@nx/eslint": "22.4.2",
-    "@nx/eslint-plugin": "22.5.2",
+    "@nx/eslint-plugin": "22.6.0",
     "@nx/js": "22.5.4",
     "@nx/vite": "22.5.1",
     "@nx/vitest": "22.5.4",
