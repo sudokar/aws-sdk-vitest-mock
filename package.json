@@ -1,6 +1,6 @@
 {
   "name": "aws-sdk-vitest-mock",
-  "version": "1.0.55",
+  "version": "1.0.57",
   "type": "module",
   "main": "./index.cjs",
   "module": "./index.js",
@@ -54,7 +54,7 @@
     "@nx/workspace": "22.5.4",
     "@smithy/types": "4.13.0",
     "@swc-node/register": "1.11.1",
-    "@swc/core": "1.15.18",
+    "@swc/core": "1.15.21",
     "@swc/helpers": "0.5.19",
     "@types/eslint-plugin-security": "3.0.1",
     "@types/node": "24.10.13",
@@ -74,10 +74,10 @@
     "prettier": "3.8.1",
     "typedoc": "0.28.17",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.54.0",
+    "typescript-eslint": "8.57.2",
     "vite": "8.0.0",
     "vite-plugin-dts": "4.5.4",
-    "vitest": "4.1.0"
+    "vitest": "4.1.1"
   },
   "peerDependencies": {
     "@aws-sdk/core": "^3",
