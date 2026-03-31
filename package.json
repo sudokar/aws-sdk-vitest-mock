@@ -73,7 +73,7 @@
     "nx": "22.5.4",
     "prettier": "3.8.1",
     "typedoc": "0.28.17",
-    "typescript": "5.9.3",
+    "typescript": "6.0.2",
     "typescript-eslint": "8.57.2",
     "vite": "8.0.0",
     "vite-plugin-dts": "4.5.4",
