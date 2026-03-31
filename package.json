@@ -1,6 +1,6 @@
 {
   "name": "aws-sdk-vitest-mock",
-  "version": "1.0.61",
+  "version": "1.0.62",
   "type": "module",
   "main": "./index.cjs",
   "module": "./index.js",
@@ -41,7 +41,7 @@
   "dependencies": {},
   "devDependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1015.0",
-    "@aws-sdk/client-dynamodb": "3.1013.0",
+    "@aws-sdk/client-dynamodb": "3.1020.0",
     "@aws-sdk/client-s3": "3.1009.0",
     "@aws-sdk/lib-dynamodb": "3.1019.0",
     "@aws-sdk/types": "3.973.6",
