@@ -32,17 +32,30 @@
     }
   },
   "plugins": [
-    { "plugin": "@nx/eslint/plugin", "options": { "targetName": "lint" } },
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "lint"
+      }
+    },
     {
       "plugin": "@nx/vitest",
-      "options": { "testTargetName": "test", "ciTargetName": "test-ci" }
+      "options": {
+        "testTargetName": "test",
+        "ciTargetName": "test-ci"
+      }
     }
   ],
   "release": {
     "projects": ["aws-sdk-vitest-mock"],
-    "version": { "conventionalCommits": true },
+    "version": {
+      "conventionalCommits": true
+    },
     "changelog": {
-      "workspaceChangelog": { "createRelease": "github", "file": false }
+      "workspaceChangelog": {
+        "createRelease": "github",
+        "file": false
+      }
     },
     "releaseTag": {
       "pattern": "release/{version}"
@@ -50,5 +63,6 @@
     "git": {
       "commitMessage": "chore(release): {version}"
     }
-  }
+  },
+  "analytics": false
 }

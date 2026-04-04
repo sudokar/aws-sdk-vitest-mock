@@ -61,7 +61,7 @@ const createWebStream = (data: StreamInput): ReadableStream<Uint8Array> => {
  * Creates an appropriate stream for the current environment
  */
 export const createStream = (
-  data: StreamInput,
+  data: StreamInput | null | undefined,
 ): Readable | ReadableStream<Uint8Array> => {
   if (data === undefined || data === null) {
     throw new TypeError("data must be a string, Buffer, or Uint8Array");
