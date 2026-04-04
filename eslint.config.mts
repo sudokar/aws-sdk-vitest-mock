@@ -5,6 +5,7 @@ import unicorn from "eslint-plugin-unicorn";
 import sonarjs from "eslint-plugin-sonarjs";
 import tseslint from "typescript-eslint";
 import vitest from "@vitest/eslint-plugin";
+import jsoncParser from "jsonc-eslint-parser";
 import { defineConfig } from "eslint/config";
 
 const unicornRecommendedRules =
@@ -112,6 +113,11 @@ export default defineConfig(
   },
   {
     files: ["**/*.json"],
+    languageOptions: {
+      // jsonc-eslint-parser is required for JSON files since @nx/eslint-plugin v22.6.3
+      // removed the JSON parser from flat/base — the parser must now be wired up explicitly.
+      parser: jsoncParser,
+    },
     rules: {
       "@nx/dependency-checks": "off",
     },

@@ -183,7 +183,7 @@ function matchesPartial<T extends object>(
       typeof matcherValue === "object" &&
       !Array.isArray(matcherValue)
     ) {
-      if (typeof inputValue !== "object" || inputValue === null) {
+      if (!inputValue || typeof inputValue !== "object") {
         return false;
       }
       return matchesPartial(
@@ -203,9 +203,9 @@ function matchesStrict<T extends object>(
   if (input === (matcher as unknown as T)) return true;
   if (
     typeof input !== "object" ||
-    input === null ||
+    !input ||
     typeof matcher !== "object" ||
-    matcher === null
+    !matcher
   ) {
     return input === (matcher as unknown as T);
   }

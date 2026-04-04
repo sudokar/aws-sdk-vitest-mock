@@ -276,7 +276,7 @@ test("toHaveReceivedNoOtherCommands should pass when no other commands received"
     { equals: vi.fn() },
     mock,
     [GetItemCommand],
-  ) as MatcherResult;
+  );
 
   expect(result.pass).toBe(true);
   mock.restore();
@@ -300,7 +300,7 @@ test("toHaveReceivedNoOtherCommands should fail when unexpected commands receive
     { equals: vi.fn() },
     mock,
     [GetItemCommand],
-  ) as MatcherResult;
+  );
 
   expect(result.pass).toBe(false);
   expect(result.message()).toBe(
@@ -316,7 +316,7 @@ test("toHaveReceivedNoOtherCommands should pass with empty expected commands", (
     { equals: vi.fn() },
     mock,
     [],
-  ) as MatcherResult;
+  );
 
   expect(result.pass).toBe(true);
   mock.restore();

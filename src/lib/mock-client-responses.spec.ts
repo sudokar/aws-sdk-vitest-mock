@@ -10,6 +10,14 @@ import { expect, test, beforeEach, afterEach, describe } from "vitest";
 import { mockClient, AwsClientStub } from "./mock-client.js";
 import "./vitest-setup.js";
 
+const consumeStreamToBuffer = async (stream: Readable): Promise<Buffer> => {
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk as Uint8Array);
+  }
+  return Buffer.concat(chunks);
+};
+
 describe("resolvesOnce / rejectsOnce", () => {
   let s3Mock: AwsClientStub<S3Client>;
 
@@ -342,15 +350,6 @@ describe("Stream Mocking", () => {
     const testData = Buffer.from("Binary content");
     s3Mock.on(GetObjectCommand).resolvesStream(testData);
 
-    // Helper to consume stream
-    const consumeStream = async (stream: Readable): Promise<Buffer> => {
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk as Uint8Array);
-      }
-      return Buffer.concat(chunks);
-    };
-
     // Multiple calls should all work
     for (let callIndex = 0; callIndex < 3; callIndex++) {
       const result = await s3Client.send(
@@ -359,7 +358,7 @@ describe("Stream Mocking", () => {
           Key: "test-key",
         }),
       );
-      const content = await consumeStream(result.Body as Readable);
+      const content = await consumeStreamToBuffer(result.Body as Readable);
       expect(content.equals(testData)).toBe(true);
     }
   });
@@ -375,15 +374,7 @@ describe("Stream Mocking", () => {
       }),
     );
 
-    const consumeStream = async (stream: Readable): Promise<Buffer> => {
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk as Uint8Array);
-      }
-      return Buffer.concat(chunks);
-    };
-
-    const content = await consumeStream(result.Body as Readable);
+    const content = await consumeStreamToBuffer(result.Body as Readable);
     expect(content.toString()).toBe("Hello");
   });
 
