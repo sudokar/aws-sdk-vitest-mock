@@ -49,7 +49,7 @@
     "@nx/eslint": "22.4.2",
     "@nx/eslint-plugin": "22.6.3",
     "@nx/js": "22.5.4",
-    "@nx/vite": "22.6.0",
+    "@nx/vite": "22.6.4",
     "@nx/vitest": "22.5.4",
     "@nx/workspace": "22.5.4",
     "@smithy/types": "4.13.0",
