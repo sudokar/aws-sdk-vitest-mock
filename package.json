@@ -57,7 +57,7 @@
     "@swc/core": "1.15.24",
     "@swc/helpers": "0.5.21",
     "@types/eslint-plugin-security": "3.0.1",
-    "@types/node": "24.12.0",
+    "@types/node": "24.12.2",
     "@typescript-eslint/parser": "8.58.0",
     "@vitest/coverage-v8": "4.1.0",
     "@vitest/eslint-plugin": "1.6.13",
