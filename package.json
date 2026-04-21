@@ -46,7 +46,7 @@
     "@aws-sdk/lib-dynamodb": "3.1030.0",
     "@aws-sdk/types": "3.973.6",
     "@eslint/js": "10.0.1",
-    "@nx/eslint": "22.6.4",
+    "@nx/eslint": "22.6.5",
     "@nx/eslint-plugin": "22.6.3",
     "@nx/js": "22.6.4",
     "@nx/vite": "22.6.5",
