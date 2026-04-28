@@ -46,7 +46,7 @@
     "@aws-sdk/lib-dynamodb": "3.1033.0",
     "@aws-sdk/types": "3.973.6",
     "@eslint/js": "10.0.1",
-    "@nx/eslint": "22.6.5",
+    "@nx/eslint": "22.7.0",
     "@nx/eslint-plugin": "22.6.3",
     "@nx/js": "22.6.4",
     "@nx/vite": "22.6.5",
@@ -73,11 +73,11 @@
     "nx": "22.6.4",
     "prettier": "3.8.1",
     "typedoc": "0.28.19",
-    "typescript": "6.0.2",
+    "typescript": "6.0.3",
     "typescript-eslint": "8.57.2",
     "vite": "8.0.8",
     "vite-plugin-dts": "4.5.4",
-    "vitest": "4.1.1"
+    "vitest": "4.1.5"
   },
   "peerDependencies": {
     "@aws-sdk/core": "^3",
