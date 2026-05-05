@@ -17,7 +17,7 @@
         "@nx/vite": "22.6.5",
         "@nx/vitest": "22.6.5",
         "@nx/workspace": "22.6.5",
-        "@smithy/types": "4.13.0",
+        "@smithy/types": "4.14.1",
         "@swc-node/register": "1.11.1",
         "@swc/core": "1.15.33",
         "@swc/helpers": "0.5.21",
@@ -605,7 +605,7 @@
 
     "@smithy/smithy-client": ["@smithy/smithy-client@4.12.9", "", { "dependencies": { "@smithy/core": "^3.23.14", "@smithy/middleware-endpoint": "^4.4.29", "@smithy/middleware-stack": "^4.2.13", "@smithy/protocol-http": "^5.3.13", "@smithy/types": "^4.14.0", "@smithy/util-stream": "^4.5.22", "tslib": "^2.6.2" } }, "sha512-ovaLEcTU5olSeHcRXcxV6viaKtpkHZumn6Ps0yn7dRf2rRSfy794vpjOtrWDO0d1auDSvAqxO+lyhERSXQ03EQ=="],
 
-    "@smithy/types": ["@smithy/types@4.13.0", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-COuLsZILbbQsdrwKQpkkpyep7lCsByxwj7m0Mg5v66/ZTyenlfBc40/QFQ5chO0YN/PNEH1Bi3fGtfXPnYNeDw=="],
+    "@smithy/types": ["@smithy/types@4.14.1", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-59b5HtSVrVR/eYNei3BUj3DCPKD/G7EtDDe7OEJE7i7FtQFugYo6MxbotS8mVJkLNVf8gYaAlEBwwtJ9HzhWSg=="],
 
     "@smithy/url-parser": ["@smithy/url-parser@4.2.13", "", { "dependencies": { "@smithy/querystring-parser": "^4.2.13", "@smithy/types": "^4.14.0", "tslib": "^2.6.2" } }, "sha512-2G03yoboIRZlZze2+PT4GZEjgwQsJjUgn6iTsvxA02bVceHR6vp4Cuk7TUnPFWKF+ffNUk3kj4COwkENS2K3vw=="],
 
@@ -1727,8 +1727,6 @@
 
     "@aws-sdk/client-dynamodb/@smithy/smithy-client": ["@smithy/smithy-client@4.12.13", "", { "dependencies": { "@smithy/core": "^3.23.17", "@smithy/middleware-endpoint": "^4.4.32", "@smithy/middleware-stack": "^4.2.14", "@smithy/protocol-http": "^5.3.14", "@smithy/types": "^4.14.1", "@smithy/util-stream": "^4.5.25", "tslib": "^2.6.2" } }, "sha512-y/Pcj1V9+qG98gyu1gvftHB7rDpdh+7kIBIggs55yGm3JdtBV8GT8IFF3a1qxZ79QnaJHX9GXzvBG6tAd+czJA=="],
 
-    "@aws-sdk/client-dynamodb/@smithy/types": ["@smithy/types@4.14.1", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-59b5HtSVrVR/eYNei3BUj3DCPKD/G7EtDDe7OEJE7i7FtQFugYo6MxbotS8mVJkLNVf8gYaAlEBwwtJ9HzhWSg=="],
-
     "@aws-sdk/client-dynamodb/@smithy/url-parser": ["@smithy/url-parser@4.2.14", "", { "dependencies": { "@smithy/querystring-parser": "^4.2.14", "@smithy/types": "^4.14.1", "tslib": "^2.6.2" } }, "sha512-p06BiBigJ8bTA3MgnOfCtDUWnAMY0YfedO/GRpmc7p+wg3KW8vbXy1xwSu5ASy0wV7rRYtlfZOIKH4XqfhjSQQ=="],
 
     "@aws-sdk/client-dynamodb/@smithy/util-defaults-mode-browser": ["@smithy/util-defaults-mode-browser@4.3.49", "", { "dependencies": { "@smithy/property-provider": "^4.2.14", "@smithy/smithy-client": "^4.12.13", "@smithy/types": "^4.14.1", "tslib": "^2.6.2" } }, "sha512-a5bNrdiONYB/qE2BuKegvUMd/+ZDwdg4vsNuuSzYE8qs2EYAdK9CynL+Rzn29PbPiUqoz/cbpRbcLzD5lEevHw=="],
@@ -1821,15 +1819,11 @@
 
     "@aws-sdk/dynamodb-codec/@smithy/core": ["@smithy/core@3.23.17", "", { "dependencies": { "@smithy/protocol-http": "^5.3.14", "@smithy/types": "^4.14.1", "@smithy/url-parser": "^4.2.14", "@smithy/util-base64": "^4.3.2", "@smithy/util-body-length-browser": "^4.2.2", "@smithy/util-middleware": "^4.2.14", "@smithy/util-stream": "^4.5.25", "@smithy/util-utf8": "^4.2.2", "@smithy/uuid": "^1.1.2", "tslib": "^2.6.2" } }, "sha512-x7BlLbUFL8NWCGjMF9C+1N5cVCxcPa7g6Tv9B4A2luWx3be3oU8hQ96wIwxe/s7OhIzvoJH73HAUSg5JXVlEtQ=="],
 
-    "@aws-sdk/dynamodb-codec/@smithy/types": ["@smithy/types@4.14.1", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-59b5HtSVrVR/eYNei3BUj3DCPKD/G7EtDDe7OEJE7i7FtQFugYo6MxbotS8mVJkLNVf8gYaAlEBwwtJ9HzhWSg=="],
-
     "@aws-sdk/lib-dynamodb/@aws-sdk/core": ["@aws-sdk/core@3.974.8", "", { "dependencies": { "@aws-sdk/types": "^3.973.8", "@aws-sdk/xml-builder": "^3.972.22", "@smithy/core": "^3.23.17", "@smithy/node-config-provider": "^4.3.14", "@smithy/property-provider": "^4.2.14", "@smithy/protocol-http": "^5.3.14", "@smithy/signature-v4": "^5.3.14", "@smithy/smithy-client": "^4.12.13", "@smithy/types": "^4.14.1", "@smithy/util-base64": "^4.3.2", "@smithy/util-middleware": "^4.2.14", "@smithy/util-retry": "^4.3.6", "@smithy/util-utf8": "^4.2.2", "tslib": "^2.6.2" } }, "sha512-njR2qoG6ZuB0kvAS2FyICsFZJ6gmCcf2X/7JcD14sUvGDm26wiZ5BrA6LOiUxKFEF+IVe7kdroxyE00YlkiYsw=="],
 
     "@aws-sdk/lib-dynamodb/@smithy/core": ["@smithy/core@3.23.17", "", { "dependencies": { "@smithy/protocol-http": "^5.3.14", "@smithy/types": "^4.14.1", "@smithy/url-parser": "^4.2.14", "@smithy/util-base64": "^4.3.2", "@smithy/util-body-length-browser": "^4.2.2", "@smithy/util-middleware": "^4.2.14", "@smithy/util-stream": "^4.5.25", "@smithy/util-utf8": "^4.2.2", "@smithy/uuid": "^1.1.2", "tslib": "^2.6.2" } }, "sha512-x7BlLbUFL8NWCGjMF9C+1N5cVCxcPa7g6Tv9B4A2luWx3be3oU8hQ96wIwxe/s7OhIzvoJH73HAUSg5JXVlEtQ=="],
 
     "@aws-sdk/lib-dynamodb/@smithy/smithy-client": ["@smithy/smithy-client@4.12.13", "", { "dependencies": { "@smithy/core": "^3.23.17", "@smithy/middleware-endpoint": "^4.4.32", "@smithy/middleware-stack": "^4.2.14", "@smithy/protocol-http": "^5.3.14", "@smithy/types": "^4.14.1", "@smithy/util-stream": "^4.5.25", "tslib": "^2.6.2" } }, "sha512-y/Pcj1V9+qG98gyu1gvftHB7rDpdh+7kIBIggs55yGm3JdtBV8GT8IFF3a1qxZ79QnaJHX9GXzvBG6tAd+czJA=="],
-
-    "@aws-sdk/lib-dynamodb/@smithy/types": ["@smithy/types@4.14.1", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-59b5HtSVrVR/eYNei3BUj3DCPKD/G7EtDDe7OEJE7i7FtQFugYo6MxbotS8mVJkLNVf8gYaAlEBwwtJ9HzhWSg=="],
 
     "@aws-sdk/middleware-bucket-endpoint/@aws-sdk/types": ["@aws-sdk/types@3.973.6", "", { "dependencies": { "@smithy/types": "^4.13.1", "tslib": "^2.6.2" } }, "sha512-Atfcy4E++beKtwJHiDln2Nby8W/mam64opFPTiHEqgsthqeydFS1pY+OUlN1ouNOmf8ArPU/6cDS65anOP3KQw=="],
 
@@ -1838,8 +1832,6 @@
     "@aws-sdk/middleware-endpoint-discovery/@smithy/node-config-provider": ["@smithy/node-config-provider@4.3.14", "", { "dependencies": { "@smithy/property-provider": "^4.2.14", "@smithy/shared-ini-file-loader": "^4.4.9", "@smithy/types": "^4.14.1", "tslib": "^2.6.2" } }, "sha512-S+gFjyo/weSVL0P1b9Ts8C/CwIfNCgUPikk3sl6QVsfE/uUuO+QsF+NsE/JkpvWqqyz1wg7HFdiaZuj5CoBMRg=="],
 
     "@aws-sdk/middleware-endpoint-discovery/@smithy/protocol-http": ["@smithy/protocol-http@5.3.14", "", { "dependencies": { "@smithy/types": "^4.14.1", "tslib": "^2.6.2" } }, "sha512-dN5F8kHx8RNU0r+pCwNmFZyz6ChjMkzShy/zup6MtkRmmix4vZzJdW+di7x//b1LiynIev88FM18ie+wwPcQtQ=="],
-
-    "@aws-sdk/middleware-endpoint-discovery/@smithy/types": ["@smithy/types@4.14.1", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-59b5HtSVrVR/eYNei3BUj3DCPKD/G7EtDDe7OEJE7i7FtQFugYo6MxbotS8mVJkLNVf8gYaAlEBwwtJ9HzhWSg=="],
 
     "@aws-sdk/middleware-expect-continue/@aws-sdk/types": ["@aws-sdk/types@3.973.6", "", { "dependencies": { "@smithy/types": "^4.13.1", "tslib": "^2.6.2" } }, "sha512-Atfcy4E++beKtwJHiDln2Nby8W/mam64opFPTiHEqgsthqeydFS1pY+OUlN1ouNOmf8ArPU/6cDS65anOP3KQw=="],
 
@@ -1898,8 +1890,6 @@
     "@aws-sdk/token-providers/@aws-sdk/types": ["@aws-sdk/types@3.973.7", "", { "dependencies": { "@smithy/types": "^4.14.0", "tslib": "^2.6.2" } }, "sha512-reXRwoJ6CfChoqAsBszUYajAF8Z2LRE+CRcKocvFSMpIiLOtYU3aJ9trmn6VVPAzbbY5LXF+FfmUslbXk1SYFg=="],
 
     "@aws-sdk/token-providers/@smithy/types": ["@smithy/types@4.14.0", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-OWgntFLW88kx2qvf/c/67Vno1yuXm/f9M7QFAtVkkO29IJXGBIg0ycEaBTH0kvCtwmvZxRujrgP5a86RvsXJAQ=="],
-
-    "@aws-sdk/types/@smithy/types": ["@smithy/types@4.14.1", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-59b5HtSVrVR/eYNei3BUj3DCPKD/G7EtDDe7OEJE7i7FtQFugYo6MxbotS8mVJkLNVf8gYaAlEBwwtJ9HzhWSg=="],
 
     "@aws-sdk/util-endpoints/@aws-sdk/types": ["@aws-sdk/types@3.973.7", "", { "dependencies": { "@smithy/types": "^4.14.0", "tslib": "^2.6.2" } }, "sha512-reXRwoJ6CfChoqAsBszUYajAF8Z2LRE+CRcKocvFSMpIiLOtYU3aJ9trmn6VVPAzbbY5LXF+FfmUslbXk1SYFg=="],
 
@@ -2058,8 +2048,6 @@
     "@smithy/util-retry/@smithy/types": ["@smithy/types@4.14.0", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-OWgntFLW88kx2qvf/c/67Vno1yuXm/f9M7QFAtVkkO29IJXGBIg0ycEaBTH0kvCtwmvZxRujrgP5a86RvsXJAQ=="],
 
     "@smithy/util-stream/@smithy/types": ["@smithy/types@4.14.0", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-OWgntFLW88kx2qvf/c/67Vno1yuXm/f9M7QFAtVkkO29IJXGBIg0ycEaBTH0kvCtwmvZxRujrgP5a86RvsXJAQ=="],
-
-    "@smithy/util-waiter/@smithy/types": ["@smithy/types@4.14.1", "", { "dependencies": { "tslib": "^2.6.2" } }, "sha512-59b5HtSVrVR/eYNei3BUj3DCPKD/G7EtDDe7OEJE7i7FtQFugYo6MxbotS8mVJkLNVf8gYaAlEBwwtJ9HzhWSg=="],
 
     "@swc-node/sourcemap-support/source-map-support": ["source-map-support@0.5.21", "", { "dependencies": { "buffer-from": "^1.0.0", "source-map": "^0.6.0" } }, "sha512-uBHU3L3czsIyYXKX88fdrGovxdSCoTGDRZ6SYXtSRxLZUzHg5P/66Ht6uoUlHu9EZod+inXhKo3qQgwXUT/y1w=="],
 

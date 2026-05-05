@@ -52,7 +52,7 @@
     "@nx/vite": "22.6.5",
     "@nx/vitest": "22.6.5",
     "@nx/workspace": "22.6.5",
-    "@smithy/types": "4.13.0",
+    "@smithy/types": "4.14.1",
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.33",
     "@swc/helpers": "0.5.21",
