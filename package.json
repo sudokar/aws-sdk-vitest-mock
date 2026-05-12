@@ -50,7 +50,7 @@
     "@nx/eslint-plugin": "22.7.1",
     "@nx/js": "22.6.4",
     "@nx/vite": "22.7.1",
-    "@nx/vitest": "22.6.5",
+    "@nx/vitest": "22.7.1",
     "@nx/workspace": "22.6.5",
     "@smithy/types": "4.14.1",
     "@swc-node/register": "1.11.1",
