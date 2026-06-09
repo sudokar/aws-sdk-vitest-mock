@@ -41,7 +41,7 @@
   "dependencies": {},
   "devDependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1045.0",
-    "@aws-sdk/client-dynamodb": "3.1045.0",
+    "@aws-sdk/client-dynamodb": "3.1064.0",
     "@aws-sdk/client-s3": "3.1050.0",
     "@aws-sdk/lib-dynamodb": "3.1061.0",
     "@aws-sdk/types": "3.973.8",
@@ -54,7 +54,7 @@
     "@nx/workspace": "22.6.5",
     "@smithy/types": "4.14.3",
     "@swc-node/register": "1.11.1",
-    "@swc/core": "1.15.33",
+    "@swc/core": "1.15.40",
     "@swc/helpers": "0.5.23",
     "@types/eslint-plugin-security": "3.0.1",
     "@types/node": "24.12.4",
