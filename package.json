@@ -71,7 +71,7 @@
     "jiti": "2.7.0",
     "lint-staged": "17.0.5",
     "nx": "22.7.1",
-    "prettier": "3.8.3",
+    "prettier": "3.8.4",
     "typedoc": "0.28.19",
     "typescript": "6.0.3",
     "typescript-eslint": "8.60.1",
