@@ -6,7 +6,7 @@ import { mockClient, AwsClientStub } from "./mock-client.js";
 // A fake command that mimics an AWS SDK command but doesn't inherit from the same base
 // This simulates a command from a different version of @aws-sdk/client-s3
 // or a different @smithy/types version
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+// eslint-disable-next-line typescript/no-explicit-any -- test file uses any for fake AWS SDK internals
 const fakeHandler = () => Promise.resolve({ output: {}, response: {} as any });
 
 class FakeCommand {
@@ -15,7 +15,6 @@ class FakeCommand {
 
   constructor(input: object) {
     this.input = input;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     this.middlewareStack = {} as any;
   }
 

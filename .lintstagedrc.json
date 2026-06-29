@@ -1,5 +1,11 @@
 {
-  "*.{ts,tsx,mts,cts}": ["eslint --fix", "prettier --write"],
-  "*.{js,jsx,mjs,cjs}": ["eslint --fix", "prettier --write"],
+  "*.{ts,tsx,mts,cts}": [
+    "oxlint --fix --config .oxlintrc.json",
+    "prettier --write"
+  ],
+  "*.{js,jsx,mjs,cjs}": [
+    "oxlint --fix --config .oxlintrc.json",
+    "prettier --write"
+  ],
   "*.{json,md,yml,yaml}": ["prettier --write"]
 }

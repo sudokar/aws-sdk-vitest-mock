@@ -18,6 +18,14 @@ const consumeStreamToBuffer = async (stream: Readable): Promise<Buffer> => {
   return Buffer.concat(chunks);
 };
 
+const consumeStream = async (stream: Readable): Promise<string> => {
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk as Uint8Array);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+};
+
 describe("resolvesOnce / rejectsOnce", () => {
   let s3Mock: AwsClientStub<S3Client>;
 
@@ -245,15 +253,6 @@ describe("Stream Mocking", () => {
     const testData = "test content";
     s3Mock.on(GetObjectCommand).resolvesStream(testData);
 
-    // Helper to consume stream
-    const consumeStream = async (stream: Readable): Promise<string> => {
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk as Uint8Array);
-      }
-      return Buffer.concat(chunks).toString("utf8");
-    };
-
     // First call - consume stream
     const result1 = await s3Client.send(
       new GetObjectCommand({
@@ -295,15 +294,6 @@ describe("Stream Mocking", () => {
       .resolvesStreamOnce(testData1)
       .resolvesStreamOnce(testData2)
       .resolvesStream(testData3);
-
-    // Helper to consume stream
-    const consumeStream = async (stream: Readable): Promise<string> => {
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk as Uint8Array);
-      }
-      return Buffer.concat(chunks).toString("utf8");
-    };
 
     // First call
     const result1 = await s3Client.send(
@@ -389,14 +379,6 @@ describe("Stream Mocking", () => {
       }),
     );
 
-    const consumeStream = async (stream: Readable): Promise<string> => {
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk as Uint8Array);
-      }
-      return Buffer.concat(chunks).toString("utf8");
-    };
-
     const content = await consumeStream(result.Body as Readable);
     expect(content).toBe(largeData);
     expect(content.length).toBe(10_000);
@@ -405,14 +387,6 @@ describe("Stream Mocking", () => {
   test("should handle concurrent stream consumption", async () => {
     const testData = "concurrent test";
     s3Mock.on(GetObjectCommand).resolvesStream(testData);
-
-    const consumeStream = async (stream: Readable): Promise<string> => {
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk as Uint8Array);
-      }
-      return Buffer.concat(chunks).toString("utf8");
-    };
 
     const promises = Array.from({ length: 5 }, () =>
       s3Client
@@ -441,14 +415,6 @@ describe("Stream Mocking", () => {
         Key: "test-key",
       }),
     );
-
-    const consumeStream = async (stream: Readable): Promise<string> => {
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk as Uint8Array);
-      }
-      return Buffer.concat(chunks).toString("utf8");
-    };
 
     const content = await consumeStream(result.Body as Readable);
     expect(content).toBe("");

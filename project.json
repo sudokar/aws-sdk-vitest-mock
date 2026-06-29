@@ -15,7 +15,7 @@
       }
     },
     "lint": {
-      "command": "eslint ./src ./package.json"
+      "executor": "nx-oxlint:lint"
     },
     "test": {
       "executor": "@nx/vitest:test",

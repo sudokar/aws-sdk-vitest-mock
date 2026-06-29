@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "import", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "unicorn/no-this-assignment": "off",
+    "unicorn/no-null": "warn",
+    "unicorn/import-style": "warn",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-misused-promises": ["error", { "checksVoidReturn": false }],
+    "no-underscore-dangle": "off",
+    "vitest/require-to-throw-message": "off",
+    "vitest/require-mock-type-parameters": "off"
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "out-tsc/**",
+    "vitest.config.*.timestamp*",
+    "vite.config.mts"
+  ],
+  "overrides": [
+    {
+      "files": ["**/*.spec.ts", "**/*.test.ts"],
+      "rules": {
+        "typescript/no-explicit-any": "off",
+        "import/no-unassigned-import": "off"
+      }
+    }
+  ]
+}

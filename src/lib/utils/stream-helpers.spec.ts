@@ -95,9 +95,9 @@ describe("stream-helpers", () => {
 
     it("should throw TypeError for null data", () => {
       // eslint-disable-next-line unicorn/no-null -- Testing null input validation
-      expect(() => createStream(null as unknown as string)).toThrow(TypeError);
+      expect(() => createStream(null)).toThrow(TypeError);
       // eslint-disable-next-line unicorn/no-null -- Testing null input validation
-      expect(() => createStream(null as unknown as string)).toThrow(
+      expect(() => createStream(null)).toThrow(
         "data must be a string, Buffer, or Uint8Array",
       );
     });
