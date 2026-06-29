@@ -46,6 +46,16 @@
   ],
   "release": {
     "projects": ["aws-sdk-vitest-mock"],
+    "conventionalCommits": {
+      "types": {
+        "chore": {
+          "semverBump": "patch",
+          "changelog": {
+            "title": "Chores"
+          }
+        }
+      }
+    },
     "version": {
       "conventionalCommits": true
     },
