@@ -47,3 +47,5 @@ Thumbs.db
 .github/instructions/nx.instructions.md
 
 vitest.config.*.timestamp*
+
+.nx/migrate-runs
