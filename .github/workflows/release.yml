@@ -41,13 +41,11 @@ jobs:
           else
             echo "release_required=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build
-        run: bun run nx build
-      - name: Create GitHub release
+      - run: bun run nx release --skip-publish
         if: steps.release_check.outputs.release_required == 'true'
-        run: bun run nx release --skip-publish
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - run: bun run nx build
       - name: Publish to npm
         if: steps.release_check.outputs.release_required == 'true'
         run: |
