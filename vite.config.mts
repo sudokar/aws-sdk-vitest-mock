@@ -28,7 +28,7 @@ export default defineConfig(() => ({
       name: "aws-sdk-vitest-mock",
       formats: ["es", "cjs"] satisfies LibraryFormats[],
     },
-    rollupOptions: {
+    rolldownOptions: {
       external: ["vitest", "node:fs", "node:path", "node:stream"],
     },
   },
