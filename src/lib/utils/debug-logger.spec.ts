@@ -14,7 +14,6 @@ describe("debug-logger", () => {
   });
 
   afterEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     consoleSpy.mockRestore();
   });
 
@@ -45,7 +44,6 @@ describe("debug-logger", () => {
     enableDebug(logger);
 
     logger.log("test message");
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const call = consoleSpy.mock.calls[0]?.[0] as string;
     expect(call).toContain("aws-sdk-vitest-mock(debug):");
     expect(call).toContain("test message");
@@ -59,7 +57,6 @@ describe("debug-logger", () => {
 
     logger.log("test message", data);
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const loggedMessage = (consoleSpy.mock.calls[0]?.[0] ?? "") as string;
     expect(loggedMessage).toContain("aws-sdk-vitest-mock(debug):");
     expect(loggedMessage).toContain("test message");
@@ -121,7 +118,6 @@ describe("debug-logger", () => {
 
       logger.logDirect("test message");
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const call = consoleSpy.mock.calls[0]?.[0] as string;
       expect(call).toContain("aws-sdk-vitest-mock(debug):");
       expect(call).toContain("test message");
@@ -133,7 +129,6 @@ describe("debug-logger", () => {
 
       logger.logDirect("test message", data);
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const loggedMessage = (consoleSpy.mock.calls[0]?.[0] ?? "") as string;
       expect(loggedMessage).toContain("aws-sdk-vitest-mock(debug):");
       expect(loggedMessage).toContain("test message");
@@ -150,7 +145,6 @@ describe("debug-logger", () => {
       logger.logDirect("direct message");
 
       expect(consoleSpy).toHaveBeenCalled();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const call = consoleSpy.mock.calls[0]?.[0] as string;
       expect(call).toContain("direct message");
     });
@@ -162,7 +156,6 @@ describe("debug-logger", () => {
       logger.logDirect("direct message");
 
       expect(consoleSpy).toHaveBeenCalled();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const call = consoleSpy.mock.calls[0]?.[0] as string;
       expect(call).toContain("direct message");
     });

@@ -12,7 +12,6 @@ import "./vitest-setup.js";
 
 // Ensure TypeScript knows about the extended matchers
 declare module "vitest" {
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface,@typescript-eslint/no-empty-object-type
   interface Assertion extends AwsSdkMatchers {}
 }
 

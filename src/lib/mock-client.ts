@@ -80,7 +80,7 @@ export type StructuralCommand<
   TInput extends object,
   TOutput extends MetadataBearer,
 > =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line typescript/no-explicit-any
   | SmithyCommand<TInput, TOutput, any, any, any>
   | {
       readonly input: TInput;
@@ -92,14 +92,14 @@ export type CommandConstructor<
   TOutput extends MetadataBearer,
 > = new (input: TInput) => StructuralCommand<TInput, TOutput>;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line typescript/no-explicit-any
 type AwsCommandConstructor = CommandConstructor<any, MetadataBearer>;
 
 export type CommandInputType<TCtor extends AwsCommandConstructor> =
   ConstructorParameters<TCtor>[0];
 
 export type CommandOutputType<TCtor extends AwsCommandConstructor> =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line typescript/no-explicit-any
   InstanceType<TCtor> extends StructuralCommand<any, infer TOutput>
     ? TOutput
     : MetadataBearer;
@@ -160,7 +160,6 @@ function matchesPartial<T extends object>(
         return false;
       }
       return matcherValue.every((matcherItem, index) => {
-        // eslint-disable-next-line security/detect-object-injection, @typescript-eslint/no-unsafe-assignment -- Array index access is safe
         const inputItem = inputValue[index];
         if (
           matcherItem &&
@@ -214,7 +213,6 @@ function matchesStrict<T extends object>(
   if (Array.isArray(input) && Array.isArray(matcher)) {
     if (input.length !== matcher.length) return false;
     return input.every((inputItem, index) => {
-      // eslint-disable-next-line security/detect-object-injection, @typescript-eslint/no-unsafe-assignment -- Array index access is safe
       const matcherItem = matcher[index];
       if (
         typeof inputItem === "object" &&
@@ -222,7 +220,6 @@ function matchesStrict<T extends object>(
         typeof matcherItem === "object" &&
         matcherItem !== null
       ) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- Recursive matching requires flexible typing
         return matchesStrict(inputItem, matcherItem);
       }
       return inputItem === matcherItem;
@@ -243,9 +240,7 @@ function matchesStrict<T extends object>(
     if (!Object.prototype.hasOwnProperty.call(input, key)) return false;
     const inputRecord = input as Record<string, unknown>;
     const matcherRecord = matcher as Record<string, unknown>;
-    // eslint-disable-next-line security/detect-object-injection -- Dynamic property access required for command input matching
     const inputValue = inputRecord[key];
-    // eslint-disable-next-line security/detect-object-injection -- Dynamic property access required for matcher comparison
     const matcherValue = matcherRecord[key];
 
     if (
@@ -859,7 +854,6 @@ function createMockImplementation(
       throw buildNoMatchError(commandName, mocks, command.input);
     }
 
-    // eslint-disable-next-line security/detect-object-injection -- Array access with validated index for mock retrieval
     const mock = mocks[matchingIndex];
     if (!mock) {
       throw new Error(`Mock at index ${matchingIndex} not found`);
@@ -943,8 +937,7 @@ function createCommandStub<
       once,
       strict: !!options.strict,
     };
-    const existingMocks =
-      container.map.get(command as unknown as AwsCommandConstructor) ?? [];
+    const existingMocks = container.map.get(command) ?? [];
 
     const shouldLog = getEffectiveDebugState(container.debugLogger);
 
@@ -952,14 +945,11 @@ function createCommandStub<
       // Insert "once" handlers before permanent handlers
       const permanentIndex = existingMocks.findIndex((m) => !m.once);
       if (permanentIndex === -1) {
-        existingMocks.push(entry as unknown as MockEntry);
+        existingMocks.push(entry);
       } else {
-        existingMocks.splice(permanentIndex, 0, entry as unknown as MockEntry);
+        existingMocks.splice(permanentIndex, 0, entry);
       }
-      container.map.set(
-        command as unknown as AwsCommandConstructor,
-        existingMocks,
-      );
+      container.map.set(command, existingMocks);
       if (shouldLog) {
         container.debugLogger.logDirect(
           `Configured ${handlerType}Once for ${command.name}`,
@@ -971,11 +961,8 @@ function createCommandStub<
       const filteredMocks = existingMocks.filter(
         (m) => m.once || JSON.stringify(m.matcher) !== JSON.stringify(matcher),
       );
-      filteredMocks.push(entry as unknown as MockEntry);
-      container.map.set(
-        command as unknown as AwsCommandConstructor,
-        filteredMocks,
-      );
+      filteredMocks.push(entry);
+      container.map.set(command, filteredMocks);
       if (shouldLog) {
         container.debugLogger.logDirect(
           `Configured ${handlerType} for ${command.name}`,
@@ -1157,31 +1144,29 @@ function createCommandStub<
     },
     resolvesPaginated<T = unknown>(
       items: T[],
-      options: PaginatorOptions = {},
+      paginatorOptions: PaginatorOptions = {},
     ): AwsCommandStub<TInput, TOutput, TClient> {
-      const responses = createPaginatedResponses(items, options);
+      const responses = createPaginatedResponses(items, paginatorOptions);
       let currentIndex = 0;
 
       container.debugLogger.log(
         `Configured resolvesPaginated for ${command.name}`,
-        { pageSize: options.pageSize, itemsCount: items.length },
+        { pageSize: paginatorOptions.pageSize, itemsCount: items.length },
       );
 
       addEntry(
         (input) => {
-          const tokenKey = options.tokenKey || "NextToken";
-          const inputTokenKey = options.inputTokenKey || tokenKey;
+          const tokenKey = paginatorOptions.tokenKey || "NextToken";
+          const inputTokenKey = paginatorOptions.inputTokenKey || tokenKey;
           const inputRecord = input as Record<string, unknown>;
-          // eslint-disable-next-line security/detect-object-injection -- Dynamic token key access required for AWS pagination handling
           const inputToken = inputRecord[inputTokenKey];
 
           if (inputToken !== undefined && inputToken !== null) {
             // Find which page has this token as its last item
-            const itemsKey = options.itemsKey || "Items";
+            const itemsKey = paginatorOptions.itemsKey || "Items";
             let pageIndex = 0;
             for (const response of responses) {
               const responseRecord = response as Record<string, unknown>;
-              // eslint-disable-next-line security/detect-object-injection
               const pageItems = responseRecord[itemsKey] as unknown[];
               if (pageItems && pageItems.length > 0) {
                 const lastItem = pageItems.at(-1);
@@ -1199,7 +1184,6 @@ function createCommandStub<
           }
 
           const response =
-            // eslint-disable-next-line security/detect-object-injection
             responses[currentIndex] || responses.at(-1) || responses[0];
           if (!response) {
             throw new Error("No paginated responses available");
@@ -1273,9 +1257,9 @@ export const mockClient = <TClient extends AnyClient>(
   const prototype = (clientConstructor as { prototype: TClient }).prototype;
 
   const sendSpy = vi
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Required for Vitest spyOn type compatibility
+    // eslint-disable-next-line typescript/no-explicit-any -- Required for Vitest spyOn type compatibility
     .spyOn(prototype as any, "send")
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any -- Required for Vitest mockImplementation type compatibility
+    // eslint-disable-next-line typescript/no-explicit-any -- Required for Vitest mockImplementation type compatibility
     .mockImplementation(createMockImplementation(mocksContainer) as any);
 
   const lifecycle = createStubLifecycle(mocksContainer, sendSpy, {
@@ -1350,7 +1334,7 @@ export const mockClientInstance = <TClient extends AnyClient>(
   });
 
   const stub: AwsClientStub<AnyClient> = {
-    client: clientInstance as unknown as AnyClient,
+    client: clientInstance,
     on: <TCtor extends AwsCommandConstructor>(
       command: TCtor,
       request?: Partial<CommandInputType<TCtor>>,

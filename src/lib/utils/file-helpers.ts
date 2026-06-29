@@ -23,7 +23,6 @@ export const loadFixture = (filePath: string): unknown => {
   }
   const resolvedPath = path.resolve(filePath);
   try {
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- Dynamic file loading is core functionality for fixture loading
     const content = readFileSync(resolvedPath, "utf8");
 
     if (filePath.endsWith(".json")) {

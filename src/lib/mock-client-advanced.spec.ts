@@ -150,7 +150,6 @@ describe("Error Handling Edge Cases", () => {
   test("should handle error with cause chain", async () => {
     const rootCause = new Error("Root cause");
     const error = new Error("Main error");
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Error.cause is not available in all TS targets
     (error as any).cause = rootCause;
 
     s3Mock.on(GetObjectCommand).rejects(error);
@@ -205,7 +204,6 @@ describe("Error Handling Edge Cases", () => {
     const stream = result.Body as Readable;
 
     await expect(async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       for await (const _chunk of stream) {
         // Stream will error
       }

@@ -111,7 +111,7 @@ export const createPaginatedResponses = <T>(
   }
 
   if (items.length === 0) {
-    return [{ [itemsKey]: [] } as PaginatedResponse<T>];
+    return [{ [itemsKey]: [] }];
   }
 
   const responses: PaginatedResponse<T>[] = [];
@@ -127,7 +127,6 @@ export const createPaginatedResponses = <T>(
       const lastItem = pageItems.at(-1);
 
       // Always use the last item as the token (works for both DynamoDB and S3)
-      // eslint-disable-next-line security/detect-object-injection -- Dynamic token key assignment required for AWS pagination simulation
       responseRecord[tokenKey] = lastItem;
     }
 

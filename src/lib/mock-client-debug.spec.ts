@@ -472,7 +472,6 @@ describe("Debug Mode", () => {
 
   afterEach(() => {
     s3Mock.restore();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     consoleSpy.mockRestore();
   });
 
@@ -505,7 +504,6 @@ describe("Debug Mode", () => {
     );
 
     // Check that configuration was logged
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const configCall = consoleSpy.mock.calls.find(
       (call: unknown[]) =>
         typeof call[0] === "string" &&
@@ -514,14 +512,12 @@ describe("Debug Mode", () => {
     expect(configCall).toBeDefined();
 
     // Check that the command received log includes the full object
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const commandLog = consoleSpy.mock.calls.find(
       (call: unknown[]) =>
         typeof call[0] === "string" &&
         call[0].includes("Received command: GetObjectCommand"),
     );
     expect(commandLog).toBeDefined();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const commandLogText = String(commandLog?.[0] ?? "");
     expect(commandLogText).toContain('"Bucket"');
     expect(commandLogText).toContain('"test-bucket"');
@@ -529,7 +525,6 @@ describe("Debug Mode", () => {
     expect(commandLogText).toContain('"test-key"');
 
     // Check that mock was found and used
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const foundCall = consoleSpy.mock.calls.find(
       (call: unknown[]) =>
         typeof call[0] === "string" &&
@@ -537,7 +532,6 @@ describe("Debug Mode", () => {
     );
     expect(foundCall).toBeDefined();
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const usingCall = consoleSpy.mock.calls.find(
       (call: unknown[]) =>
         typeof call[0] === "string" &&
@@ -554,10 +548,8 @@ describe("Debug Mode", () => {
       .resolves({ Body: "test" as unknown as GetObjectCommandOutput["Body"] });
 
     // Check that the configuration log includes the full matcher details
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const firstCall = consoleSpy.mock.calls[0];
     expect(firstCall).toBeDefined();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const configLog = String(firstCall?.[0] ?? "");
     expect(configLog).toContain("Configured resolves for GetObjectCommand");
     expect(configLog).toContain('"Bucket"');
@@ -573,7 +565,6 @@ describe("Debug Mode", () => {
       Body: "once" as unknown as GetObjectCommandOutput["Body"],
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const call = consoleSpy.mock.calls[0]?.[0] as string;
     expect(call).toContain("aws-sdk-vitest-mock(debug):");
     expect(call).toContain("Configured resolvesOnce for GetObjectCommand");
@@ -584,7 +575,6 @@ describe("Debug Mode", () => {
 
     s3Mock.on(GetObjectCommand).rejects(new Error("test error"));
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const call = consoleSpy.mock.calls[0]?.[0] as string;
     expect(call).toContain("aws-sdk-vitest-mock(debug):");
     expect(call).toContain("Configured rejects for GetObjectCommand");
@@ -595,7 +585,6 @@ describe("Debug Mode", () => {
 
     s3Mock.reset();
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const call = consoleSpy.mock.calls[0]?.[0] as string;
     expect(call).toContain("aws-sdk-vitest-mock(debug):");
     expect(call).toContain("Clearing call history (mocks preserved)");
@@ -606,7 +595,6 @@ describe("Debug Mode", () => {
 
     s3Mock.restore();
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const call = consoleSpy.mock.calls[0]?.[0] as string;
     expect(call).toContain("aws-sdk-vitest-mock(debug):");
     expect(call).toContain(
@@ -646,7 +634,6 @@ describe("Debug Mode", () => {
     ).rejects.toThrow();
 
     // Check that mocks were found
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const foundCall = consoleSpy.mock.calls.find(
       (call: unknown[]) =>
         typeof call[0] === "string" &&
@@ -655,14 +642,12 @@ describe("Debug Mode", () => {
     expect(foundCall).toBeDefined();
 
     // Check that the no matching mock log includes the full object
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const noMatchLog = consoleSpy.mock.calls.find(
       (call: unknown[]) =>
         typeof call[0] === "string" &&
         call[0].includes("No matching mock found for GetObjectCommand"),
     );
     expect(noMatchLog).toBeDefined();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const noMatchLogText = String(noMatchLog?.[0] ?? "");
     expect(noMatchLogText).toContain('"Bucket"');
     expect(noMatchLogText).toContain('"test-bucket"');
@@ -672,14 +657,12 @@ describe("Debug Mode", () => {
 
   test("should log when one-time mock is removed", async () => {
     s3Mock.enableDebug();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     consoleSpy.mockClear(); // Clear the configuration log
 
     s3Mock.on(GetObjectCommand).resolvesOnce({
       Body: "once" as unknown as GetObjectCommandOutput["Body"],
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     consoleSpy.mockClear(); // Clear the configuration log before sending
 
     await s3Client.send(
@@ -690,7 +673,6 @@ describe("Debug Mode", () => {
     );
 
     // Check that one-time mock removal was logged
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const removeCall = consoleSpy.mock.calls.find(
       (call: unknown[]) =>
         typeof call[0] === "string" &&

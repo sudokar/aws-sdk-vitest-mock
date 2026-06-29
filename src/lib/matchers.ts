@@ -73,8 +73,8 @@ export const matchers = {
         }
 
         const receivedCommands = calls.map(([cmd]) => {
-          const command = cmd as { constructor?: { name?: string } };
-          return command.constructor?.name ?? "Unknown";
+          const receivedCmd = cmd as { constructor?: { name?: string } };
+          return receivedCmd.constructor?.name ?? "Unknown";
         });
 
         if (receivedCommands.length === 0) {
@@ -407,8 +407,6 @@ export interface AwsSdkMatchers<R = unknown> {
 export type { MatcherResult };
 
 declare module "vitest" {
-  /* eslint-disable @typescript-eslint/no-empty-object-type, @typescript-eslint/no-empty-interface -- Required for Vitest module augmentation to extend assertion interfaces */
   interface Assertion extends AwsSdkMatchers {}
   interface AsymmetricMatchersContaining extends AwsSdkMatchers {}
-  /* eslint-enable @typescript-eslint/no-empty-object-type, @typescript-eslint/no-empty-interface */
 }
