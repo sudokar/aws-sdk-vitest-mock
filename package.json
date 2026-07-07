@@ -52,7 +52,7 @@
     "@smithy/smithy-client": "^2.1.11",
     "@smithy/types": "4.15.0",
     "@swc-node/register": "1.11.1",
-    "@swc/core": "1.15.40",
+    "@swc/core": "1.15.43",
     "@swc/helpers": "0.5.23",
     "@types/node": "24.12.4",
     "@vitest/coverage-v8": "4.1.9",
