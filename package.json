@@ -1,6 +1,6 @@
 {
   "name": "aws-sdk-vitest-mock",
-  "version": "1.0.72",
+  "version": "1.0.73",
   "type": "module",
   "main": "./index.cjs",
   "module": "./index.js",
@@ -47,7 +47,7 @@
     "@aws-sdk/types": "3.973.14",
     "@nx/js": "23.0.1",
     "@nx/vite": "23.0.1",
-    "@nx/vitest": "23.0.1",
+    "@nx/vitest": "23.1.0",
     "@nx/workspace": "23.0.1",
     "@smithy/smithy-client": "^4.14.6",
     "@smithy/types": "4.15.0",
