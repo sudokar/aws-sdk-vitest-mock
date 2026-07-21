@@ -51,7 +51,7 @@
     "@nx/workspace": "23.1.0",
     "@smithy/smithy-client": "^4.14.6",
     "@smithy/types": "4.16.1",
-    "@swc-node/register": "1.11.1",
+    "@swc-node/register": "1.12.1",
     "@swc/core": "1.15.46",
     "@swc/helpers": "0.5.23",
     "@types/node": "24.12.4",
