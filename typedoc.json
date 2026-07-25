@@ -10,7 +10,6 @@
     "**/*.test.ts",
     "**/test/**",
     "**/tests/**",
-    "**/utils/**",
     "**/lib/vitest-setup.ts"
   ],
   "excludePrivate": true,
