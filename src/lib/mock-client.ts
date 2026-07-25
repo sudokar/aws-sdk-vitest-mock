@@ -26,7 +26,7 @@ import {
 } from "./utils/paginator-helpers.js";
 import { createStream, type StreamInput } from "./utils/stream-helpers.js";
 
-type DeepPartial<T> = T extends (...args: unknown[]) => unknown
+export type DeepPartial<T> = T extends (...args: unknown[]) => unknown
   ? T
   : T extends ReadonlyArray<infer U>
     ? ReadonlyArray<DeepPartial<U>>
@@ -93,7 +93,7 @@ export type CommandConstructor<
 > = new (input: TInput) => StructuralCommand<TInput, TOutput>;
 
 // eslint-disable-next-line typescript/no-explicit-any
-type AwsCommandConstructor = CommandConstructor<any, MetadataBearer>;
+export type AwsCommandConstructor = CommandConstructor<any, MetadataBearer>;
 
 export type CommandInputType<TCtor extends AwsCommandConstructor> =
   ConstructorParameters<TCtor>[0];
@@ -107,18 +107,16 @@ export type CommandOutputType<TCtor extends AwsCommandConstructor> =
 export type AnyClient = {
   send(command: AwsSdkCommand): Promise<MetadataBearer>;
   config:
-    | SmithyResolvedConfiguration<HttpHandlerOptions>
-    | Record<string, unknown>;
+    SmithyResolvedConfiguration<HttpHandlerOptions> | Record<string, unknown>;
 };
 
 export type AwsSdkCommand = StructuralCommand<object, MetadataBearer>;
 
 // Allow protected constructors by accepting prototype property directly if needed
 export type ClientConstructor<TClient extends AnyClient> =
-  | (abstract new (...args: unknown[]) => TClient)
-  | { prototype: TClient };
+  (abstract new (...args: unknown[]) => TClient) | { prototype: TClient };
 
-type CommandHandler<
+export type CommandHandler<
   TInput extends object = object,
   TOutput extends MetadataBearer = MetadataBearer,
   TClient extends AnyClient = AnyClient,
@@ -137,7 +135,7 @@ interface MockEntry<
   strict: boolean;
 }
 
-interface MockOptions {
+export interface MockOptions {
   strict?: boolean;
 }
 
