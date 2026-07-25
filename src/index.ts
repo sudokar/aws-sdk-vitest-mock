@@ -43,6 +43,24 @@ export {
 export type { AwsCommandStub, AwsClientStub } from "./lib/mock-client.js";
 
 /**
+ * TypeScript utility types for working with AWS SDK mocks
+ * @category Types
+ */
+export type {
+  AnyClient,
+  AwsCommandConstructor,
+  AwsSdkCommand,
+  ClientConstructor,
+  CommandConstructor,
+  CommandHandler,
+  CommandInputType,
+  CommandOutputType,
+  DeepPartial,
+  MockOptions,
+  StructuralCommand,
+} from "./lib/mock-client.js";
+
+/**
  * Custom Vitest matchers for AWS SDK assertions
  * @category Matchers
  */
@@ -52,4 +70,11 @@ export { matchers } from "./lib/matchers.js";
  * TypeScript types for matcher interfaces
  * @category Matchers
  */
-export type { AwsSdkMatchers } from "./lib/matchers.js";
+export type { AwsSdkMatchers, MatcherResult } from "./lib/matchers.js";
+
+/**
+ * TypeScript utility types used in mock configuration
+ * @category Types
+ */
+export type { PaginatorOptions } from "./lib/utils/paginator-helpers.js";
+export type { StreamInput } from "./lib/utils/stream-helpers.js";
