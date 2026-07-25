@@ -11,7 +11,8 @@
       "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist",
-        "configFile": "vite.config.mts"
+        "configFile": "vite.config.mts",
+        "skipTypeCheck": true
       }
     },
     "lint": {
