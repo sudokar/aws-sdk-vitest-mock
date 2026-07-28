@@ -46,7 +46,7 @@
     "@aws-sdk/lib-dynamodb": "3.1076.0",
     "@aws-sdk/types": "3.974.2",
     "@nx/js": "23.0.1",
-    "@nx/vite": "23.0.1",
+    "@nx/vite": "23.1.0",
     "@nx/vitest": "23.1.0",
     "@nx/workspace": "23.1.0",
     "@smithy/smithy-client": "^4.14.6",
