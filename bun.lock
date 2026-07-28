@@ -11,7 +11,7 @@
         "@aws-sdk/lib-dynamodb": "3.1076.0",
         "@aws-sdk/types": "3.974.2",
         "@nx/js": "23.0.1",
-        "@nx/vite": "23.0.1",
+        "@nx/vite": "23.1.0",
         "@nx/vitest": "23.1.0",
         "@nx/workspace": "23.1.0",
         "@smithy/smithy-client": "^4.14.15",
@@ -423,7 +423,7 @@
 
     "@nx/nx-win32-x64-msvc": ["@nx/nx-win32-x64-msvc@23.0.1", "", { "os": "win32", "cpu": "x64" }, "sha512-TE/wvBa2cpkVXmk/AXUQAneong4JReS2hyNpAUONKG1yXU7TDKe0wvn1xQXxAbyspudT9NuCnVtpVuEkRz8S+Q=="],
 
-    "@nx/vite": ["@nx/vite@23.0.1", "", { "dependencies": { "@nx/devkit": "23.0.1", "@nx/js": "23.0.1", "@nx/vitest": "23.0.1", "@phenomnomnominal/tsquery": "~6.2.0", "ajv": "^8.0.0", "enquirer": "~2.3.6", "picomatch": "4.0.4", "semver": "^7.6.3", "tsconfig-paths": "^4.1.2", "tslib": "^2.3.0" }, "peerDependencies": { "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0" } }, "sha512-1zf+Ow8ORL4yL5AhcNqz1MiDPekitcSSZ+PNz2stEG9+4YjJ2Q5/9UPwVXTy7dAaUsAq9WJWzgzRdtT2MORh+w=="],
+    "@nx/vite": ["@nx/vite@23.1.0", "", { "dependencies": { "@nx/devkit": "23.1.0", "@nx/js": "23.1.0", "@nx/vitest": "23.1.0", "@phenomnomnominal/tsquery": "~6.2.0", "ajv": "^8.0.0", "enquirer": "~2.3.6", "picomatch": "4.0.4", "semver": "^7.6.3", "tsconfig-paths": "^4.1.2", "tslib": "^2.3.0" }, "peerDependencies": { "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0" } }, "sha512-4nzc3mM55k+AcGxQzT8IKHoZH1dCROiY0CO0CD2H0sinwthJXxhL+zG1H3xowkKM7so6hkuf2JvGdNOeL4OocQ=="],
 
     "@nx/vitest": ["@nx/vitest@23.1.0", "", { "dependencies": { "@nx/devkit": "23.1.0", "@nx/js": "23.1.0", "@phenomnomnominal/tsquery": "~6.2.0", "semver": "^7.6.3", "tslib": "^2.3.0" }, "peerDependencies": { "@nx/eslint": "23.1.0", "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0", "vitest": "^3.0.0 || ^4.0.0" }, "optionalPeers": ["@nx/eslint", "vite", "vitest"] }, "sha512-uv9lpbpOaEvrDjFToDKxeCsN+0thq4giIHUdOgcH+oHuqfxZ2speYGKCQz+6ICQg0nxcsCyuN34Ww6jJX3EVzQ=="],
 
@@ -1369,7 +1369,9 @@
 
     "@nx/js/@nx/workspace": ["@nx/workspace@23.0.1", "", { "dependencies": { "@nx/devkit": "23.0.1", "@zkochan/js-yaml": "0.0.7", "chalk": "^4.1.0", "enquirer": "~2.3.6", "nx": "23.0.1", "picomatch": "4.0.4", "semver": "^7.6.3", "tslib": "^2.3.0", "yargs-parser": "21.1.1" } }, "sha512-VdbvMTSEzp3ONZwiy83XEu8ktykC8aEI7M4mqKs5RNKHBFg3jtao2NFo3wDqHqnn1q9Fdaj8EbyUn08BUR5L3w=="],
 
-    "@nx/vite/@nx/vitest": ["@nx/vitest@23.0.1", "", { "dependencies": { "@nx/devkit": "23.0.1", "@nx/js": "23.0.1", "@phenomnomnominal/tsquery": "~6.2.0", "semver": "^7.6.3", "tslib": "^2.3.0" }, "peerDependencies": { "@nx/eslint": "23.0.1", "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0", "vitest": "^3.0.0 || ^4.0.0" }, "optionalPeers": ["@nx/eslint", "vite", "vitest"] }, "sha512-aIf8b+pn3zWkCy4TaVOvHDZ1UKZDtc1zUuDSHdbfXPAfIAoRoT4B2Ae63ARGW+aru1qQIM0UMec4LNprIN1c/A=="],
+    "@nx/vite/@nx/devkit": ["@nx/devkit@23.1.0", "", { "dependencies": { "@zkochan/js-yaml": "0.0.7", "ejs": "5.0.1", "enquirer": "~2.3.6", "minimatch": "10.2.5", "semver": "^7.6.3", "tslib": "^2.3.0", "yaml": "^2.8.3", "yargs-parser": "21.1.1" }, "peerDependencies": { "nx": ">= 22 <= 24 || ^23.0.0-0" } }, "sha512-4LPBrjwtretBQksqph2aXqz2Atd5+oO7RTVlQoOweU8Sh2A0wM8CNig8n+LX2iwxniPYRooLN4kRtKxO4mi2Mw=="],
+
+    "@nx/vite/@nx/js": ["@nx/js@23.1.0", "", { "dependencies": { "@babel/core": "^7.23.2", "@babel/plugin-proposal-decorators": "^7.22.7", "@babel/plugin-transform-class-properties": "^7.22.5", "@babel/plugin-transform-runtime": "^7.23.2", "@babel/preset-env": "^7.23.2", "@babel/preset-typescript": "^7.22.5", "@babel/runtime": "^7.22.6", "@nx/devkit": "23.1.0", "@nx/workspace": "23.1.0", "@zkochan/js-yaml": "0.0.7", "babel-plugin-const-enum": "^1.0.1", "babel-plugin-macros": "^3.1.0", "babel-plugin-transform-typescript-metadata": "^0.3.1", "chalk": "^4.1.0", "columnify": "^1.6.0", "detect-port": "^2.1.0", "ignore": "^7.0.5", "js-tokens": "^4.0.0", "jsonc-parser": "^3.2.0", "npm-run-path": "^4.0.1", "picocolors": "^1.1.0", "picomatch": "4.0.4", "semver": "^7.6.3", "source-map-support": "0.5.19", "tinyglobby": "^0.2.12", "tslib": "^2.3.0" }, "peerDependencies": { "@swc/cli": ">=0.6.0 <0.9.0", "verdaccio": "^6.0.5" }, "optionalPeers": ["@swc/cli", "verdaccio"] }, "sha512-Gp8c/3ZixVqjMcmkfRaIf/wrxjPrfngaHuoALWIQVjK0X2dcCqR9fxYs7sAnmlrkWlWNkwT6NcCx+sJ8uTR3Yw=="],
 
     "@nx/vitest/@nx/devkit": ["@nx/devkit@23.1.0", "", { "dependencies": { "@zkochan/js-yaml": "0.0.7", "ejs": "5.0.1", "enquirer": "~2.3.6", "minimatch": "10.2.5", "semver": "^7.6.3", "tslib": "^2.3.0", "yaml": "^2.8.3", "yargs-parser": "21.1.1" }, "peerDependencies": { "nx": ">= 22 <= 24 || ^23.0.0-0" } }, "sha512-4LPBrjwtretBQksqph2aXqz2Atd5+oO7RTVlQoOweU8Sh2A0wM8CNig8n+LX2iwxniPYRooLN4kRtKxO4mi2Mw=="],
 
