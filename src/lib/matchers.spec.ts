@@ -3,7 +3,11 @@ import {
   GetItemCommand,
   PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { expect, test, beforeEach, vi } from "vitest";
 import { matchers } from "./matchers.js";
 import type { AwsSdkMatchers, MatcherResult } from "./matchers.js";
@@ -305,6 +309,21 @@ test("toHaveReceivedNoOtherCommands should fail when unexpected commands receive
   expect(result.message()).toBe(
     "Expected AWS SDK mock to have received \u001B[90mno other commands\u001B[39m, but received: \u001B[31mPutItemCommand\u001B[39m",
   );
+  mock.restore();
+});
+
+test("toHaveReceivedNoOtherCommands should accept heterogeneous commands with incompatible input types", async () => {
+  const mock = mockClient(DynamoDBDocumentClient);
+  const ddbClient = new DynamoDBClient({ region: "us-east-1" });
+  const client = DynamoDBDocumentClient.from(ddbClient);
+
+  mock.on(GetCommand).resolves({ Item: { id: "1" } });
+  mock.on(PutCommand).resolves({});
+
+  await client.send(new GetCommand({ TableName: "test", Key: { id: "1" } }));
+  await client.send(new PutCommand({ TableName: "test", Item: { id: "2" } }));
+
+  expect(mock).toHaveReceivedNoOtherCommands([GetCommand, PutCommand]);
   mock.restore();
 });
 
