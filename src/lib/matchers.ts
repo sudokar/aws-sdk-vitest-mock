@@ -1,6 +1,7 @@
 import { type MetadataBearer } from "@smithy/types";
 import type {
   AwsClientStub,
+  AwsCommandConstructor,
   CommandConstructor,
   StructuralCommand,
 } from "./mock-client.js";
@@ -301,12 +302,9 @@ export const matchers = {
    * expect(s3Mock).toHaveReceivedNoOtherCommands([GetObjectCommand]);
    * ```
    */
-  toHaveReceivedNoOtherCommands<
-    TInput extends object,
-    TOutput extends MetadataBearer,
-  >(
+  toHaveReceivedNoOtherCommands(
     received: AwsClientStub,
-    expectedCommands: CommandConstructor<TInput, TOutput>[] = [],
+    expectedCommands: AwsCommandConstructor[] = [],
   ): MatcherResult {
     const calls = getCommandCalls(received);
     const unexpectedCalls = calls.filter((call) => {
@@ -396,12 +394,7 @@ export interface AwsSdkMatchers<R = unknown> {
    * Assert that only expected commands were received.
    * @param expectedCommands - Array of allowed command constructors
    */
-  toHaveReceivedNoOtherCommands<
-    TInput extends object,
-    TOutput extends MetadataBearer,
-  >(
-    expectedCommands?: CommandConstructor<TInput, TOutput>[],
-  ): R;
+  toHaveReceivedNoOtherCommands(expectedCommands?: AwsCommandConstructor[]): R;
 }
 
 export type { MatcherResult };
