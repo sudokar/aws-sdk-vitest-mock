@@ -47,7 +47,7 @@
     "@aws-sdk/types": "3.974.2",
     "@nx/js": "23.1.2",
     "@nx/vite": "23.1.0",
-    "@nx/vitest": "23.1.0",
+    "@nx/vitest": "23.1.2",
     "@nx/workspace": "23.1.0",
     "@smithy/smithy-client": "^4.14.16",
     "@smithy/types": "4.16.1",
