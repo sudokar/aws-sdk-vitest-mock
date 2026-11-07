@@ -73,6 +73,21 @@ export { matchers } from "./lib/matchers.js";
 export type { AwsSdkMatchers, MatcherResult } from "./lib/matchers.js";
 
 /**
+ * AWS error class and factories, usable with `rejects` / `rejectsOnce`
+ * @category Errors
+ */
+export {
+  AwsError,
+  createAccessDeniedError,
+  createConditionalCheckFailedError,
+  createInternalServerError,
+  createNoSuchBucketError,
+  createNoSuchKeyError,
+  createResourceNotFoundError,
+  createThrottlingError,
+} from "./lib/utils/aws-errors.js";
+
+/**
  * TypeScript utility types used in mock configuration
  * @category Types
  */

@@ -1,4 +1,6 @@
 import { Readable } from "node:stream";
+import { sdkStreamMixin } from "@smithy/core/serde";
+import type { SdkStream } from "@smithy/types";
 
 export type StreamInput = string | Buffer | Uint8Array;
 
@@ -62,13 +64,15 @@ const createWebStream = (data: StreamInput): ReadableStream<Uint8Array> => {
  */
 export const createStream = (
   data: StreamInput | null | undefined,
-): Readable | ReadableStream<Uint8Array> => {
+): SdkStream<Readable> | SdkStream<ReadableStream | Blob> => {
   if (data === undefined || data === null) {
     throw new TypeError("data must be a string, Buffer, or Uint8Array");
   }
   const env = detectEnvironment();
+  const stream =
+    env === "node" || env === "bun"
+      ? createNodeStream(data)
+      : createWebStream(data);
 
-  return env === "node" || env === "bun"
-    ? createNodeStream(data)
-    : createWebStream(data);
+  return sdkStreamMixin(stream);
 };
