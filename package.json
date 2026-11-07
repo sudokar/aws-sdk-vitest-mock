@@ -49,6 +49,7 @@
     "@nx/vite": "23.3.1",
     "@nx/vitest": "23.3.1",
     "@nx/workspace": "23.3.1",
+    "@smithy/core": "3.30.0",
     "@smithy/smithy-client": "^4.14.16",
     "@smithy/types": "4.18.0",
     "@swc-node/register": "1.12.1",
@@ -71,6 +72,7 @@
   },
   "peerDependencies": {
     "@aws-sdk/core": "^3",
+    "@smithy/core": "^3.24.0",
     "vitest": "^3 || ^4"
   }
 }
