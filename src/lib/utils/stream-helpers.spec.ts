@@ -39,6 +39,13 @@ describe("stream-helpers", () => {
       expect(stream).toBeInstanceOf(ReadableStream);
     });
 
+    it("should add SDK stream methods to browser ReadableStream", async () => {
+      globalThis.process = undefined as unknown as typeof process;
+
+      const stream = createStream("web data");
+      await expect(stream.transformToString()).resolves.toBe("web data");
+    });
+
     it("should create ReadableStream for browser with Buffer input", () => {
       // Mock browser environment
       globalThis.process = undefined as unknown as typeof process;
@@ -65,6 +72,21 @@ describe("stream-helpers", () => {
 
       const stream = createStream("test data");
       expect(stream).toBeInstanceOf(Readable);
+    });
+
+    it("should add SDK stream methods in Bun environment", async () => {
+      globalThis.process = {
+        versions: { bun: "1.0.0" },
+      } as unknown as typeof process;
+
+      const stream = createStream("bun data");
+      await expect(stream.transformToString()).resolves.toBe("bun data");
+    });
+
+    it("should throw on a second transformTo call", async () => {
+      const stream = createStream("once");
+      await stream.transformToString();
+      await expect(stream.transformToString()).rejects.toThrow();
     });
 
     it("should read data from web stream correctly", async () => {

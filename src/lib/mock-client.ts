@@ -123,7 +123,7 @@ export type CommandHandler<
 > = (
   input: TInput,
   clientInstance: TClient | undefined,
-) => Promise<DeepPartial<TOutput>>;
+) => DeepPartial<TOutput> | Promise<DeepPartial<TOutput>>;
 
 interface MockEntry<
   TInput extends object = object,
@@ -360,6 +360,22 @@ export interface AwsClientStub<TClient extends AnyClient = AnyClient> {
    * ```
    */
   calls: () => AwsSdkCommand[];
+
+  /**
+   * Get the commands of one type that were sent to the client, typed by that command.
+   *
+   * @param command - The AWS SDK command constructor to filter by
+   * @returns Array of commands that are instances of `command`
+   *
+   * @example
+   * ```typescript
+   * const [call] = s3Mock.commandCalls(GetObjectCommand);
+   * console.log(call?.input.Key);
+   * ```
+   */
+  commandCalls: <TCtor extends AwsCommandConstructor>(
+    command: TCtor,
+  ) => InstanceType<TCtor>[];
 
   /** @internal - For use by matchers only */
   __rawCalls: () => ReturnType<Mock["mock"]["calls"]["slice"]>;
@@ -684,6 +700,50 @@ export interface AwsCommandStub<
   >;
 
   /**
+   * One-time variant of {@link AwsCommandStub.rejectsWithNoSuchKey}.
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(GetObjectCommand).rejectsWithNoSuchKeyOnce('missing.csv');
+   * ```
+   */
+  rejectsWithNoSuchKeyOnce: (
+    key?: string,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+
+  /** One-time variant of {@link AwsCommandStub.rejectsWithNoSuchBucket}. */
+  rejectsWithNoSuchBucketOnce: (
+    bucket?: string,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+
+  /** One-time variant of {@link AwsCommandStub.rejectsWithAccessDenied}. */
+  rejectsWithAccessDeniedOnce: (
+    resource?: string,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+
+  /** One-time variant of {@link AwsCommandStub.rejectsWithResourceNotFound}. */
+  rejectsWithResourceNotFoundOnce: (
+    resource?: string,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+
+  /** One-time variant of {@link AwsCommandStub.rejectsWithConditionalCheckFailed}. */
+  rejectsWithConditionalCheckFailedOnce: () => AwsCommandStub<
+    TInput,
+    TOutput,
+    TClient
+  >;
+
+  /** One-time variant of {@link AwsCommandStub.rejectsWithThrottling}. */
+  rejectsWithThrottlingOnce: () => AwsCommandStub<TInput, TOutput, TClient>;
+
+  /** One-time variant of {@link AwsCommandStub.rejectsWithInternalServerError}. */
+  rejectsWithInternalServerErrorOnce: () => AwsCommandStub<
+    TInput,
+    TOutput,
+    TClient
+  >;
+
+  /**
    * Set paginated responses for AWS pagination patterns.
    *
    * Tokens are automatically set to the last item of each page, which works for both
@@ -734,6 +794,26 @@ export interface AwsCommandStub<
    * ```
    */
   resolvesPaginated: <T = unknown>(
+    items: T[],
+    options?: PaginatorOptions,
+  ) => AwsCommandStub<TInput, TOutput, TClient>;
+
+  /**
+   * One-time variant of {@link AwsCommandStub.resolvesPaginated}. Serves the
+   * whole page sequence once, in call order, then falls through to the next mock.
+   * Unlike `resolvesPaginated`, the incoming page token is NOT checked: page N is
+   * returned on the Nth call whatever the input holds.
+   *
+   * @example
+   * ```typescript
+   * s3Mock.on(ListObjectsV2Command).resolvesPaginatedOnce(objects, {
+   *   pageSize: 2,
+   *   tokens: ["token-1", "token-2"],
+   *   tokenKey: "NextContinuationToken",
+   * });
+   * ```
+   */
+  resolvesPaginatedOnce: <T = unknown>(
     items: T[],
     options?: PaginatorOptions,
   ) => AwsCommandStub<TInput, TOutput, TClient>;
@@ -872,7 +952,9 @@ function createMockImplementation(
       }
     }
 
-    return mock.handler(command.input, getClient()) as Promise<MetadataBearer>;
+    return Promise.resolve(
+      mock.handler(command.input, getClient()),
+    ) as Promise<MetadataBearer>;
   };
 }
 
@@ -899,6 +981,13 @@ const createStubLifecycle = (
     },
     calls(): AwsSdkCommand[] {
       return sendSpy.mock.calls.map((call) => call[0] as AwsSdkCommand);
+    },
+    commandCalls<TCtor extends AwsCommandConstructor>(
+      command: TCtor,
+    ): InstanceType<TCtor>[] {
+      return sendSpy.mock.calls
+        .map((call) => call[0])
+        .filter((c): c is InstanceType<TCtor> => c instanceof command);
     },
     __rawCalls(): ReturnType<Mock["mock"]["calls"]["slice"]> {
       return sendSpy.mock.calls;
@@ -1140,6 +1229,78 @@ function createCommandStub<
       );
       return stub;
     },
+    rejectsWithNoSuchKeyOnce(
+      key?: string,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(
+        () => Promise.reject(createNoSuchKeyError(key)),
+        true,
+        "rejectsWithNoSuchKey",
+      );
+      return stub;
+    },
+    rejectsWithNoSuchBucketOnce(
+      bucket?: string,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(
+        () => Promise.reject(createNoSuchBucketError(bucket)),
+        true,
+        "rejectsWithNoSuchBucket",
+      );
+      return stub;
+    },
+    rejectsWithAccessDeniedOnce(
+      resource?: string,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(
+        () => Promise.reject(createAccessDeniedError(resource)),
+        true,
+        "rejectsWithAccessDenied",
+      );
+      return stub;
+    },
+    rejectsWithResourceNotFoundOnce(
+      resource?: string,
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(
+        () => Promise.reject(createResourceNotFoundError(resource)),
+        true,
+        "rejectsWithResourceNotFound",
+      );
+      return stub;
+    },
+    rejectsWithConditionalCheckFailedOnce(): AwsCommandStub<
+      TInput,
+      TOutput,
+      TClient
+    > {
+      addEntry(
+        () => Promise.reject(createConditionalCheckFailedError()),
+        true,
+        "rejectsWithConditionalCheckFailed",
+      );
+      return stub;
+    },
+    rejectsWithThrottlingOnce(): AwsCommandStub<TInput, TOutput, TClient> {
+      addEntry(
+        () => Promise.reject(createThrottlingError()),
+        true,
+        "rejectsWithThrottling",
+      );
+      return stub;
+    },
+    rejectsWithInternalServerErrorOnce(): AwsCommandStub<
+      TInput,
+      TOutput,
+      TClient
+    > {
+      addEntry(
+        () => Promise.reject(createInternalServerError()),
+        true,
+        "rejectsWithInternalServerError",
+      );
+      return stub;
+    },
     resolvesPaginated<T = unknown>(
       items: T[],
       paginatorOptions: PaginatorOptions = {},
@@ -1160,22 +1321,16 @@ function createCommandStub<
           const inputToken = inputRecord[inputTokenKey];
 
           if (inputToken !== undefined && inputToken !== null) {
-            // Find which page has this token as its last item
-            const itemsKey = paginatorOptions.itemsKey || "Items";
-            let pageIndex = 0;
-            for (const response of responses) {
-              const responseRecord = response as Record<string, unknown>;
-              const pageItems = responseRecord[itemsKey] as unknown[];
-              if (pageItems && pageItems.length > 0) {
-                const lastItem = pageItems.at(-1);
-
-                // Compare the token with the last item (deep equality check)
-                if (JSON.stringify(lastItem) === JSON.stringify(inputToken)) {
-                  currentIndex = pageIndex + 1;
-                  break;
-                }
-              }
-              pageIndex++;
+            // Find the page that issued this token (deep equality check)
+            const issuedIndex = responses.findIndex(
+              (response) =>
+                (response as Record<string, unknown>)[tokenKey] !== undefined &&
+                JSON.stringify(
+                  (response as Record<string, unknown>)[tokenKey],
+                ) === JSON.stringify(inputToken),
+            );
+            if (issuedIndex !== -1) {
+              currentIndex = issuedIndex + 1;
             }
           } else {
             currentIndex = 0;
@@ -1194,6 +1349,22 @@ function createCommandStub<
         "resolvesPaginated",
       );
 
+      return stub;
+    },
+    resolvesPaginatedOnce<T = unknown>(
+      items: T[],
+      paginatorOptions: PaginatorOptions = {},
+    ): AwsCommandStub<TInput, TOutput, TClient> {
+      for (const response of createPaginatedResponses(
+        items,
+        paginatorOptions,
+      )) {
+        addEntry(
+          () => Promise.resolve(response as unknown as DeepPartial<TOutput>),
+          true,
+          "resolvesPaginated",
+        );
+      }
       return stub;
     },
     resolvesFromFile(
