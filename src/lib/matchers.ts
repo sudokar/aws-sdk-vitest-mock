@@ -203,6 +203,8 @@ export const matchers = {
 
   /**
    * Assert that the Nth command call was a specific command with specific input.
+   * `n` counts calls across ALL commands of the client; use
+   * `toHaveReceivedNthCommandOfTypeWith` to count per command type.
    *
    * @param received - The AWS client stub
    * @param n - The call number (1-indexed)
@@ -281,6 +283,185 @@ export const matchers = {
         );
         return `Expected AWS SDK mock nth (${nColored}) command ${commandNameColored} with input:\n${inputColored}\n\n${butReceived}:\n${actualInputColored}`;
       },
+    };
+  },
+
+  /**
+   * Assert that the Nth call of one specific command type had the given input.
+   * Unlike `toHaveReceivedNthCommandWith`, `n` counts only calls of `command`
+   * (as in `aws-sdk-client-mock-vitest`).
+   *
+   * @param received - The AWS client stub
+   * @param n - The call number among calls of `command` (1-indexed)
+   * @param command - The command constructor to check for
+   * @param input - The expected input parameters
+   * @returns Matcher result
+   *
+   * @example
+   * ```typescript
+   * await client.send(new ListUsersCommand({}));
+   * await client.send(new UpdateCommand({ Id: 1 }));
+   * await client.send(new UpdateCommand({ Id: 2 }));
+   *
+   * expect(mock).toHaveReceivedNthCommandOfTypeWith(2, UpdateCommand, { Id: 2 });
+   * ```
+   */
+  toHaveReceivedNthCommandOfTypeWith<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
+    this: { equals: (a: unknown, b: unknown) => boolean },
+    received: AwsClientStub,
+    n: number,
+    command: CommandConstructor<TInput, TOutput>,
+    input: TInput,
+  ): MatcherResult {
+    const calls = getCommandCalls(received).filter(
+      (call) => call[0] instanceof command,
+    );
+    const nthCall = calls[n - 1];
+    const pass = Boolean(nthCall) && this.equals(nthCall?.[0].input, input);
+
+    return {
+      pass,
+      message: (): string => {
+        const expected = `nth (${colors.magenta(n.toString())}) ${colors.red(command.name)} with input:\n${colors.cyan(JSON.stringify(input, undefined, 2))}`;
+        if (pass) {
+          return `Expected AWS SDK mock not to have received ${expected}`;
+        }
+        if (!nthCall) {
+          return `Expected AWS SDK mock to have received ${expected}\n\nBut ${colors.gray(`only received ${calls.length} ${command.name} call(s)`)}`;
+        }
+        return `Expected AWS SDK mock to have received ${expected}\n\nBut received:\n${colors.yellow(JSON.stringify(nthCall[0].input, undefined, 2))}`;
+      },
+    };
+  },
+
+  /**
+   * Assert that a command was received exactly once.
+   *
+   * @example
+   * ```typescript
+   * expect(s3Mock).toHaveReceivedCommandOnce(GetObjectCommand);
+   * ```
+   */
+  toHaveReceivedCommandOnce<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
+    received: AwsClientStub,
+    command: CommandConstructor<TInput, TOutput>,
+  ): MatcherResult {
+    const count = getCommandCalls(received).filter(
+      (call) => call[0] instanceof command,
+    ).length;
+    const pass = count === 1;
+
+    return {
+      pass,
+      message: (): string =>
+        pass
+          ? `Expected AWS SDK mock not to have received command ${colors.red(command.name)} exactly once`
+          : `Expected AWS SDK mock to have received command ${colors.red(command.name)} exactly once, but received it ${colors.yellow(count.toString())} time(s)`,
+    };
+  },
+
+  /**
+   * Assert that a command was received exactly once, with the given input.
+   *
+   * @example
+   * ```typescript
+   * expect(cognitoMock).toHaveReceivedCommandExactlyOnceWith(AdminDeleteUserCommand, {
+   *   UserPoolId: 'pool',
+   *   Username: 'user-1',
+   * });
+   * ```
+   */
+  toHaveReceivedCommandExactlyOnceWith<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
+    this: { equals: (a: unknown, b: unknown) => boolean },
+    received: AwsClientStub,
+    command: CommandConstructor<TInput, TOutput>,
+    input: TInput,
+  ): MatcherResult {
+    const calls = getCommandCalls(received).filter(
+      (call) => call[0] instanceof command,
+    );
+    const pass = calls.length === 1 && this.equals(calls[0]?.[0].input, input);
+
+    return {
+      pass,
+      message: (): string => {
+        const expected = `command ${colors.red(command.name)} exactly once with input:\n${colors.cyan(JSON.stringify(input, undefined, 2))}`;
+        if (pass) {
+          return `Expected AWS SDK mock not to have received ${expected}`;
+        }
+        if (calls.length !== 1) {
+          return `Expected AWS SDK mock to have received ${expected}\n\nBut received it ${colors.yellow(calls.length.toString())} time(s)`;
+        }
+        return `Expected AWS SDK mock to have received ${expected}\n\nBut received:\n${colors.yellow(JSON.stringify(calls[0]?.[0].input, undefined, 2))}`;
+      },
+    };
+  },
+
+  /**
+   * Assert that the last call of a command type had the given input.
+   *
+   * @example
+   * ```typescript
+   * expect(s3Mock).toHaveReceivedLastCommandWith(PutObjectCommand, { Bucket: 'b', Key: 'k' });
+   * ```
+   */
+  toHaveReceivedLastCommandWith<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
+    this: { equals: (a: unknown, b: unknown) => boolean },
+    received: AwsClientStub,
+    command: CommandConstructor<TInput, TOutput>,
+    input: TInput,
+  ): MatcherResult {
+    const calls = getCommandCalls(received).filter(
+      (call) => call[0] instanceof command,
+    );
+    const lastCall = calls.at(-1);
+    const pass = Boolean(lastCall) && this.equals(lastCall?.[0].input, input);
+
+    return {
+      pass,
+      message: (): string => {
+        const expected = `last ${colors.red(command.name)} with input:\n${colors.cyan(JSON.stringify(input, undefined, 2))}`;
+        if (pass) {
+          return `Expected AWS SDK mock not to have received ${expected}`;
+        }
+        if (!lastCall) {
+          return `Expected AWS SDK mock to have received ${expected}\n\nBut ${colors.gray(`${command.name} was never called`)}`;
+        }
+        return `Expected AWS SDK mock to have received ${expected}\n\nBut received:\n${colors.yellow(JSON.stringify(lastCall[0].input, undefined, 2))}`;
+      },
+    };
+  },
+
+  /**
+   * Assert that any command was received.
+   *
+   * @example
+   * ```typescript
+   * expect(s3Mock).toHaveReceivedAnyCommand();
+   * ```
+   */
+  toHaveReceivedAnyCommand(received: AwsClientStub): MatcherResult {
+    const count = getCommandCalls(received).length;
+    const pass = count > 0;
+
+    return {
+      pass,
+      message: (): string =>
+        pass
+          ? `Expected AWS SDK mock not to have received any command, but received ${colors.yellow(count.toString())}`
+          : `Expected AWS SDK mock to have received any command, but ${colors.gray("no commands were received")}`,
     };
   },
 
@@ -389,6 +570,48 @@ export interface AwsSdkMatchers<R = unknown> {
     command: CommandConstructor<TInput, TOutput>,
     input: TInput,
   ): R;
+
+  /**
+   * Assert that the Nth call of one command type had the given input
+   * (`n` counts only calls of `command`).
+   */
+  toHaveReceivedNthCommandOfTypeWith<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
+    n: number,
+    command: CommandConstructor<TInput, TOutput>,
+    input: TInput,
+  ): R;
+
+  /** Assert that a command was received exactly once. */
+  toHaveReceivedCommandOnce<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
+    command: CommandConstructor<TInput, TOutput>,
+  ): R;
+
+  /** Assert that a command was received exactly once, with the given input. */
+  toHaveReceivedCommandExactlyOnceWith<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
+    command: CommandConstructor<TInput, TOutput>,
+    input: TInput,
+  ): R;
+
+  /** Assert that the last call of a command type had the given input. */
+  toHaveReceivedLastCommandWith<
+    TInput extends object,
+    TOutput extends MetadataBearer,
+  >(
+    command: CommandConstructor<TInput, TOutput>,
+    input: TInput,
+  ): R;
+
+  /** Assert that any command was received. */
+  toHaveReceivedAnyCommand(): R;
 
   /**
    * Assert that only expected commands were received.

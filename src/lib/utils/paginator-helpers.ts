@@ -68,6 +68,22 @@ export interface PaginatorOptions {
    * @default "Items"
    */
   itemsKey?: string;
+
+  /**
+   * Explicit token for each page, by page index. Needs at least one entry per
+   * page except the last, and entries must be unique and not undefined/null. Takes precedence over `tokenFor`.
+   *
+   * @example ["token-1", "token-2"]
+   */
+  tokens?: unknown[];
+
+  /**
+   * Computes the token for a page. Not called for the last page.
+   * Ignored when `tokens` is set.
+   *
+   * @example (pageIndex) => `token-${pageIndex + 1}`
+   */
+  tokenFor?: (pageIndex: number, pageItems: unknown[]) => unknown;
 }
 
 export interface PaginatedResponse<T = unknown> {
@@ -104,10 +120,23 @@ export const createPaginatedResponses = <T>(
   items: T[],
   options: PaginatorOptions = {},
 ): PaginatedResponse<T>[] => {
-  const { pageSize = 10, tokenKey = "NextToken", itemsKey = "Items" } = options;
+  const {
+    pageSize = 10,
+    tokenKey = "NextToken",
+    itemsKey = "Items",
+    tokens,
+    tokenFor,
+  } = options;
 
   if (!Number.isInteger(pageSize) || pageSize <= 0) {
     throw new TypeError("pageSize must be a positive integer");
+  }
+
+  const neededTokens = Math.ceil(items.length / pageSize) - 1;
+  if (tokens && tokens.length < neededTokens) {
+    throw new TypeError(
+      `tokens must have at least ${neededTokens} entries for ${items.length} items with pageSize ${pageSize}`,
+    );
   }
 
   if (items.length === 0) {
@@ -124,13 +153,30 @@ export const createPaginatedResponses = <T>(
 
     if (hasMore) {
       const responseRecord = response as Record<string, unknown>;
-      const lastItem = pageItems.at(-1);
+      const pageIndex = index / pageSize;
 
-      // Always use the last item as the token (works for both DynamoDB and S3)
-      responseRecord[tokenKey] = lastItem;
+      // Default: last item of the page (works for both DynamoDB and S3)
+      responseRecord[tokenKey] = tokens
+        ? tokens[pageIndex]
+        : tokenFor
+          ? tokenFor(pageIndex, pageItems)
+          : pageItems.at(-1);
     }
 
     responses.push(response);
+  }
+
+  if (tokens || tokenFor) {
+    const issued = responses
+      .slice(0, -1)
+      .map((r) => (r as Record<string, unknown>)[tokenKey]);
+    if (issued.some((t) => t === undefined || t === null)) {
+      throw new TypeError("page tokens must not be undefined or null");
+    }
+    const keys = issued.map((t) => JSON.stringify(t));
+    if (new Set(keys).size !== keys.length) {
+      throw new TypeError("page tokens must be unique");
+    }
   }
 
   return responses;

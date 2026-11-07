@@ -68,6 +68,7 @@ pnpm add -D aws-sdk-vitest-mock
 
 - Vitest: ^3 or ^4
 - AWS SDK: v3
+- `@smithy/core`: ^3.24.0 (peer dependency, installed with any AWS SDK v3 client)
 
 ## 🚀 Quick Start
 
@@ -375,9 +376,15 @@ s3Mock
   .resolvesStream("Subsequent calls");
 ```
 
+The body implements the SDK v3 `SdkStreamMixin`, so code under test can call `Body.transformToString()`, `transformToByteArray()` or `transformToWebStream()`. This uses `sdkStreamMixin` from `@smithy/core/serde`, which is a peer dependency. It is installed with any AWS SDK v3 client, but under strict package managers (pnpm, Yarn PnP) add `@smithy/core` to your own devDependencies, because the library imports it when loaded.
+
+As with the real SDK, a body can be consumed only once: a second `transformTo*()` call, or one after the stream was read, throws. `resolvesStream` creates a fresh body for every call.
+
 ### Paginator Support
 
-Mock AWS SDK v3 pagination with automatic token handling. **Tokens are the actual last item from each page** (works for both DynamoDB and S3).
+Mock AWS SDK v3 pagination with automatic token handling. **By default, tokens are the actual last item from each page** (works for both DynamoDB and S3).
+
+To assert exact tokens, pass `tokens: ["token-1", "token-2"]` (one per page except the last) or `tokenFor: (pageIndex, pageItems) => ...`. Tokens must be unique and, except for the last page, not `undefined`/`null`. `resolvesPaginatedOnce` takes the same arguments and serves the whole page sequence once, in call order. Unlike `resolvesPaginated` it does not check the incoming token, so it cannot detect code that forgets to pass the token forward.
 
 #### DynamoDB Pagination
 
@@ -505,6 +512,14 @@ dynamoMock.on(PutItemCommand).rejectsWithConditionalCheckFailed();
 // General AWS Errors
 s3Mock.on(GetObjectCommand).rejectsWithThrottling();
 s3Mock.on(GetObjectCommand).rejectsWithInternalServerError();
+```
+
+Every helper has a one-time `*Once` variant (e.g. `rejectsWithNoSuchKeyOnce("missing.csv")`), and the error factories are exported for use with `rejects` / `rejectsOnce`:
+
+```typescript
+import { createNoSuchKeyError } from "aws-sdk-vitest-mock";
+
+s3Mock.on(GetObjectCommand).rejectsOnce(createNoSuchKeyError("missing.csv"));
 ```
 
 ### Delay/Latency Simulation
@@ -690,8 +705,29 @@ test("should call DynamoDB", async () => {
     Key: { id: { S: "123" } },
   });
 
-  // Assert the nth call had specific input
+  // Assert it was called exactly once (optionally with specific input)
+  expect(ddbMock).toHaveReceivedCommandOnce(GetItemCommand);
+  expect(ddbMock).toHaveReceivedCommandExactlyOnceWith(GetItemCommand, {
+    TableName: "users",
+    Key: { id: { S: "123" } },
+  });
+
+  // Assert the last call of a command had specific input
+  expect(ddbMock).toHaveReceivedLastCommandWith(GetItemCommand, {
+    TableName: "users",
+    Key: { id: { S: "123" } },
+  });
+
+  // Assert any command was received
+  expect(ddbMock).toHaveReceivedAnyCommand();
+
+  // Assert the nth call (counted across ALL commands of the client)
   expect(ddbMock).toHaveReceivedNthCommandWith(1, GetItemCommand, {
+    TableName: "users",
+  });
+
+  // Assert the nth call of ONE command type (counted per command)
+  expect(ddbMock).toHaveReceivedNthCommandOfTypeWith(1, GetItemCommand, {
     TableName: "users",
   });
 
@@ -726,6 +762,7 @@ Mocks an existing AWS SDK client instance.
 - `reset()` - Clear call history while preserving mock configurations
 - `restore()` - Restore original client behavior
 - `calls()` - Get call history
+- `commandCalls(Command)` - Get call history for one command, typed by that command
 - `enableDebug()` - Enable debug logging for troubleshooting (overrides global setting)
 - `disableDebug()` - Disable debug logging (overrides global setting)
 
@@ -735,13 +772,14 @@ Mocks an existing AWS SDK client instance.
 - `resolvesOnce(output)` - Return successful response once
 - `rejects(error)` - Return error
 - `rejectsOnce(error)` - Return error once
-- `callsFake(handler)` - Custom response handler
+- `callsFake(handler)` - Custom response handler (sync or async)
 - `callsFakeOnce(handler)` - Custom response handler (once)
 - `resolvesStream(data)` - Return stream response (S3 helper)
 - `resolvesStreamOnce(data)` - Return stream response once (S3 helper)
 - `resolvesWithDelay(output, delayMs)` - Return response with delay
 - `rejectsWithDelay(error, delayMs)` - Return error with delay
-- `resolvesPaginated(items, options?)` - Return paginated responses with automatic token handling
+- `resolvesPaginated(items, options?)` - Return paginated responses with automatic token handling (`options.tokens` / `options.tokenFor` set exact page tokens)
+- `resolvesPaginatedOnce(items, options?)` - Serve the whole page sequence once, then fall through to the next mock
 - `resolvesFromFile(filePath)` - Load response from file (JSON files are parsed, others returned as strings)
 - `rejectsWithNoSuchKey(key?)` - Reject with S3 NoSuchKey error
 - `rejectsWithNoSuchBucket(bucket?)` - Reject with S3 NoSuchBucket error
@@ -750,6 +788,7 @@ Mocks an existing AWS SDK client instance.
 - `rejectsWithConditionalCheckFailed()` - Reject with DynamoDB ConditionalCheckFailed error
 - `rejectsWithThrottling()` - Reject with Throttling error
 - `rejectsWithInternalServerError()` - Reject with InternalServerError
+- `rejectsWith*Once(...)` - One-time variant of each `rejectsWith*` helper above
 
 ## 🤝 Contributing
 

@@ -29,7 +29,13 @@ export default defineConfig(() => ({
       formats: ["es", "cjs"] satisfies LibraryFormats[],
     },
     rolldownOptions: {
-      external: ["vitest", "node:fs", "node:path", "node:stream"],
+      external: [
+        "vitest",
+        "node:fs",
+        "node:path",
+        "node:stream",
+        /^@smithy\/core/,
+      ],
     },
   },
   test: {
