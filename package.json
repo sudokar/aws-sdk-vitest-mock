@@ -1,6 +1,6 @@
 {
   "name": "aws-sdk-vitest-mock",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "type": "module",
   "main": "./index.cjs",
   "module": "./index.js",
@@ -63,10 +63,10 @@
     "nx": "24.0.5",
     "nx-oxlint": "^0.1.1",
     "oxlint": "^1.79.0",
-    "prettier": "3.9.6",
+    "prettier": "3.10.1",
     "typedoc": "0.28.20",
     "typescript": "7.0.2",
-    "vite": "8.3.6",
+    "vite": "8.3.8",
     "vite-plugin-dts": "5.1.2",
     "vitest": "4.1.11"
   },
