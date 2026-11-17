@@ -68,7 +68,7 @@
     "typescript": "7.0.2",
     "vite": "8.3.6",
     "vite-plugin-dts": "5.1.2",
-    "vitest": "4.1.11"
+    "vitest": "5.1.0"
   },
   "peerDependencies": {
     "@aws-sdk/core": "^3",
