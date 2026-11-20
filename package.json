@@ -73,6 +73,6 @@
   "peerDependencies": {
     "@aws-sdk/core": "^3",
     "@smithy/core": "^3.24.0",
-    "vitest": "^3 || ^4"
+    "vitest": "^3 || ^4 || ^5"
   }
 }

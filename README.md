@@ -66,7 +66,7 @@ pnpm add -D aws-sdk-vitest-mock
 
 ## ✅ Compatibility
 
-- Vitest: ^3 or ^4
+- Vitest: ^3, ^4 or ^5
 - AWS SDK: v3
 - `@smithy/core`: ^3.24.0 (peer dependency, installed with any AWS SDK v3 client)
 
